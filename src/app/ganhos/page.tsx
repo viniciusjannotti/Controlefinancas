@@ -266,12 +266,16 @@ function AddEarningsForm({
   onCancel?: () => void
 }) {
   const [loading, setLoading] = useState(false);
+  const [clients, setClients] = useState(["Empresa X", "Cliente Y", "Startup Z"]);
+  const [newClient, setNewClient] = useState("");
+  const [showAddClient, setShowAddClient] = useState(false);
+
   const defaultForm = {
     date: new Date().toISOString().split('T')[0],
     name: "",
     type: "",
-    service: "",
-    session: "",
+    service: "online",
+    notes: "",
     method: "Pix",
     amount: ""
   };
@@ -289,8 +293,8 @@ function AddEarningsForm({
         date: dateStr,
         name: editingEarning.name || "",
         type: editingEarning.type || "",
-        service: editingEarning.service || "",
-        session: editingEarning.session || "",
+        service: editingEarning.service || "online",
+        notes: editingEarning.notes || "",
         method: editingEarning.method || "Pix",
         amount: editingEarning.amount?.toString() || ""
       });
@@ -299,6 +303,15 @@ function AddEarningsForm({
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingEarning]);
+
+  const addClient = () => {
+    if (newClient && !clients.includes(newClient)) {
+      setClients([...clients, newClient]);
+      setFormData({ ...formData, name: newClient });
+      setNewClient("");
+      setShowAddClient(false);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!formData.name || !formData.amount) {
@@ -351,17 +364,57 @@ function AddEarningsForm({
 
         <div className="space-y-2">
           <Label htmlFor="name">{type === "maria" ? "Nome do Paciente" : "Nome do Cliente"}</Label>
-          <div className="relative">
-            <User className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-            <Input 
-              id="name" 
-              placeholder="Ex: Ana Maria" 
-              className="pl-10" 
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            />
-          </div>
+          {type === "maria" ? (
+            <div className="relative">
+              <User className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+              <Input 
+                id="name" 
+                placeholder="Ex: Ana Maria" 
+                className="pl-10" 
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              />
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <User className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                <select 
+                  id="name" 
+                  className={selectClass + " pl-10 appearance-none"}
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                >
+                  <option value="">Selecione um cliente</option>
+                  {clients.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <Button 
+                variant="outline" 
+                size="icon" 
+                onClick={() => setShowAddClient(!showAddClient)}
+                className="shrink-0"
+              >
+                <Plus className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
         </div>
+
+        {showAddClient && type === "vinicius" && (
+          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+            <Label className="text-xs">Novo Cliente</Label>
+            <div className="flex gap-2">
+              <Input 
+                value={newClient} 
+                onChange={(e) => setNewClient(e.target.value)}
+                placeholder="Nome..." 
+                className="h-9 text-xs" 
+              />
+              <Button size="sm" onClick={addClient}>Add</Button>
+            </div>
+          </div>
+        )}
 
         {type === "maria" ? (
           <div className="space-y-2">
@@ -377,20 +430,23 @@ function AddEarningsForm({
           <>
             <div className="space-y-2">
               <Label htmlFor="service">Tipo de Serviço</Label>
-              <Input 
+              <select 
                 id="service" 
-                placeholder="Online / Presencial" 
+                className={selectClass}
                 value={formData.service}
                 onChange={(e) => setFormData({ ...formData, service: e.target.value })}
-              />
+              >
+                <option value="online">Online</option>
+                <option value="presencial">Presencial</option>
+              </select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="session">Tipo de Sessão</Label>
+              <Label htmlFor="notes">Observação <span className="text-slate-400 font-normal">(Opcional)</span></Label>
               <Input 
-                id="session" 
-                placeholder="Avulsa / Pacote" 
-                value={formData.session}
-                onChange={(e) => setFormData({ ...formData, session: e.target.value })}
+                id="notes" 
+                placeholder="Detalhes adicionais..." 
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               />
             </div>
           </>

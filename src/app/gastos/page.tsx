@@ -164,12 +164,12 @@ export default function ExpensesPage() {
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex justify-between items-end">
         <div className="flex flex-col gap-2">
-          <h2 className="text-3xl font-bold tracking-tight text-slate-900">Despesas</h2>
+          <h2 className="text-3xl font-bold tracking-tight text-slate-900">Gastos</h2>
           <p className="text-slate-500 text-lg">Controle os gastos compartilhados da casa.</p>
         </div>
         <Button onClick={() => document.getElementById("date")?.focus()}>
           <Plus className="w-4 h-4 mr-2" />
-          Nova Despesa
+          Novo Gasto
         </Button>
       </div>
 
@@ -234,7 +234,7 @@ function ExpensesTable({
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <CardTitle>Histórico de Despesas</CardTitle>
+          <CardTitle>Histórico de Gastos</CardTitle>
           <CardDescription>Lista completa de gastos compartilhados.</CardDescription>
         </div>
         <div className="flex gap-2">
@@ -265,7 +265,7 @@ function ExpensesTable({
             {data.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center py-8 text-slate-400">
-                  Nenhuma despesa encontrada.
+                  Nenhum gasto encontrado.
                 </TableCell>
               </TableRow>
             ) : (
@@ -420,7 +420,7 @@ function AddExpenseForm({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{editingExpense ? "Editar Despesa" : "Nova Despesa"}</CardTitle>
+        <CardTitle>{editingExpense ? "Editar Gasto" : "Novo Gasto"}</CardTitle>
         <CardDescription>
           {editingExpense ? "Atualize as informações do gasto." : "Lance um novo gasto compartilhado."}
         </CardDescription>
