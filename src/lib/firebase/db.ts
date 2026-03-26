@@ -103,6 +103,34 @@ export const getInvestments = async (userId: string) => {
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 };
 
+// Clients (Vinicius)
+export const addViniciusClient = async (name: string) => {
+  return await addDoc(collection(db, "vinicius_clients"), {
+    name,
+    createdAt: Timestamp.now(),
+  });
+};
+
+export const getViniciusClients = async () => {
+  const q = query(collection(db, "vinicius_clients"), orderBy("name", "asc"));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+};
+
+// Clients (Maria Cecilia)
+export const addCeciliaClient = async (name: string) => {
+  return await addDoc(collection(db, "cecilia_clients"), {
+    name,
+    createdAt: Timestamp.now(),
+  });
+};
+
+export const getCeciliaClients = async () => {
+  const q = query(collection(db, "cecilia_clients"), orderBy("name", "asc"));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+};
+
 // Settings
 export const getSettings = async () => {
   const docRef = doc(db, "settings", "global");

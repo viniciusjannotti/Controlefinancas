@@ -29,7 +29,16 @@ import {
 } from "@/components/ui/Tabs";
 import { Button, Input, Label, Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/index";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { addEarning, getEarnings, updateEarning, deleteEarning } from "@/lib/firebase/db";
+import { 
+  addEarning, 
+  getEarnings, 
+  updateEarning, 
+  deleteEarning,
+  addViniciusClient,
+  getViniciusClients,
+  addCeciliaClient,
+  getCeciliaClients 
+} from "@/lib/firebase/db";
 // import { toast } from "sonner"; 
 
 export default function EarningsPage() {
@@ -266,9 +275,22 @@ function AddEarningsForm({
   onCancel?: () => void
 }) {
   const [loading, setLoading] = useState(false);
-  const [clients, setClients] = useState(["Empresa X", "Cliente Y", "Startup Z"]);
+  const [clients, setClients] = useState<any[]>([]);
   const [newClient, setNewClient] = useState("");
   const [showAddClient, setShowAddClient] = useState(false);
+
+  const fetchClients = React.useCallback(async () => {
+    try {
+      const data = type === "vinicius" ? await getViniciusClients() : await getCeciliaClients();
+      setClients(data);
+    } catch (error) {
+      console.error("Erro ao buscar clientes:", error);
+    }
+  }, [type]);
+
+  React.useEffect(() => {
+    fetchClients();
+  }, [fetchClients]);
 
   const defaultForm = {
     date: new Date().toISOString().split('T')[0],
@@ -304,12 +326,25 @@ function AddEarningsForm({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingEarning]);
 
-  const addClient = () => {
-    if (newClient && !clients.includes(newClient)) {
-      setClients([...clients, newClient]);
-      setFormData({ ...formData, name: newClient });
-      setNewClient("");
-      setShowAddClient(false);
+  const addClient = async () => {
+    if (newClient) {
+      setLoading(true);
+      try {
+        if (type === "vinicius") {
+          await addViniciusClient(newClient);
+        } else {
+          await addCeciliaClient(newClient);
+        }
+        await fetchClients();
+        setFormData({ ...formData, name: newClient });
+        setNewClient("");
+        setShowAddClient(false);
+      } catch (error) {
+        console.error("Erro ao adicionar cliente:", error);
+        alert("Erro ao adicionar cliente.");
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -364,46 +399,33 @@ function AddEarningsForm({
 
         <div className="space-y-2">
           <Label htmlFor="name">{type === "maria" ? "Nome do Paciente" : "Nome do Cliente"}</Label>
-          {type === "maria" ? (
-            <div className="relative">
+          <div className="flex gap-2">
+            <div className="relative flex-1">
               <User className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-              <Input 
+              <select 
                 id="name" 
-                placeholder="Ex: Ana Maria" 
-                className="pl-10" 
+                className={selectClass + " pl-10 appearance-none"}
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              />
-            </div>
-          ) : (
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <User className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                <select 
-                  id="name" 
-                  className={selectClass + " pl-10 appearance-none"}
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                >
-                  <option value="">Selecione um cliente</option>
-                  {clients.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-              <Button 
-                variant="outline" 
-                size="icon" 
-                onClick={() => setShowAddClient(!showAddClient)}
-                className="shrink-0"
               >
-                <Plus className="w-4 h-4" />
-              </Button>
+                <option value="">{type === "maria" ? "Selecione um paciente" : "Selecione um cliente"}</option>
+                {clients.map(c => <option key={c.id || c.name} value={c.name}>{c.name}</option>)}
+              </select>
             </div>
-          )}
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={() => setShowAddClient(!showAddClient)}
+              className="shrink-0"
+            >
+              <Plus className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
 
-        {showAddClient && type === "vinicius" && (
+        {showAddClient && (
           <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
-            <Label className="text-xs">Novo Cliente</Label>
+            <Label className="text-xs">{type === "maria" ? "Novo Paciente" : "Novo Cliente"}</Label>
             <div className="flex gap-2">
               <Input 
                 value={newClient} 
