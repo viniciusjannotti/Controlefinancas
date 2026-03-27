@@ -7,7 +7,9 @@ import {
   LineChart as LineChartIcon,
   PieChart as PieChartIcon,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  X,
+  ChevronRight
 } from "lucide-react";
 import { 
   BarChart, 
@@ -51,6 +53,8 @@ export default function Dashboard() {
   });
   const [monthlyData, setMonthlyData] = useState<any[]>([]);
   const [categoryData, setCategoryData] = useState<any[]>([]);
+  const [detailedCategoryData, setDetailedCategoryData] = useState<Record<string, any[]>>({});
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -136,6 +140,34 @@ export default function Dashboard() {
           .sort((a, b) => b.value - a.value);
 
         setCategoryData(catData);
+
+        // 4. Aggregate Detailed Data for Sub-categories
+        const detailedDetails: Record<string, any[]> = {};
+        allExpenses.forEach(e => {
+          const parts = (e.category || "Outros").split(" > ");
+          const parent = parts[0];
+          const sub = parts[1] || parent;
+          
+          if (!detailedDetails[parent]) detailedDetails[parent] = [];
+          
+          const existing = detailedDetails[parent].find(s => s.name === sub);
+          if (existing) {
+            existing.value += (Number(e.amount) || 0);
+          } else {
+            detailedDetails[parent].push({
+              name: sub,
+              value: (Number(e.amount) || 0),
+              color: colors[detailedDetails[parent].length % colors.length]
+            });
+          }
+        });
+
+        // Sort subcategories by value
+        Object.keys(detailedDetails).forEach(cat => {
+          detailedDetails[cat].sort((a, b) => b.value - a.value);
+        });
+
+        setDetailedCategoryData(detailedDetails);
 
       } catch (error) {
         console.error("Erro ao carregar dados do dashboard:", error);
@@ -226,33 +258,129 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent className="h-[300px] flex items-center justify-center">
             {categoryData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={categoryData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {categoryData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                    formatter={(value: any) => formatCurrency(Number(value))}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+              <div className="w-full h-full relative" onClick={() => categoryData[0]?.name && setSelectedCategory(categoryData[0].name)}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart cx="50%" cy="50%">
+                    <Pie
+                      data={categoryData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={80}
+                      paddingAngle={5}
+                      dataKey="value"
+                      onClick={(data) => data && data.name && setSelectedCategory(data.name)}
+                    >
+                      {categoryData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} className="hover:opacity-80 transition-opacity cursor-pointer focus:outline-none" />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                      formatter={(value: any) => formatCurrency(Number(value))}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span className="text-xs text-slate-400 font-medium">Clique para</span>
+                  <span className="text-xs text-slate-400 font-medium font-bold">detalhes</span>
+                </div>
+              </div>
             ) : (
               <p className="text-slate-400 text-sm italic">Nenhum gasto registrado.</p>
             )}
           </CardContent>
         </Card>
       </div>
+
+      {/* Detailed Breakdown Overlay */}
+      {selectedCategory && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
+          <Card className="w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl scale-100 animate-in zoom-in-95 duration-300">
+            <CardHeader className="flex flex-row items-center justify-between border-b border-slate-100 pb-4">
+              <div>
+                <CardTitle className="text-2xl flex items-center gap-2">
+                  <span className="w-2 h-8 bg-primary rounded-full" />
+                  Detalhamento: {selectedCategory}
+                </CardTitle>
+                <p className="text-slate-500 text-sm mt-1">Breakdown detalhado dos gastos desta categoria</p>
+              </div>
+              <button 
+                onClick={() => setSelectedCategory(null)}
+                className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+                aria-label="Fechar"
+              >
+                <X className="w-6 h-6 text-slate-400" />
+              </button>
+            </CardHeader>
+            <CardContent className="p-6 overflow-y-auto max-h-[calc(90vh-100px)]">
+              <div className="grid md:grid-cols-2 gap-8">
+                <div className="h-[250px] flex items-center justify-center">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={detailedCategoryData[selectedCategory] || []}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={70}
+                        outerRadius={100}
+                        paddingAngle={2}
+                        dataKey="value"
+                      >
+                        {(detailedCategoryData[selectedCategory] || []).map((entry: any, index: number) => (
+                          <Cell key={`cell-detailed-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                        formatter={(value: any) => formatCurrency(Number(value))}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                
+                <div className="space-y-4">
+                  <h4 className="font-bold text-slate-900 border-b border-slate-100 pb-2">Subcategorias</h4>
+                  <div className="space-y-3">
+                    {(detailedCategoryData[selectedCategory] || []).map((item, i) => (
+                      <div key={i} className="flex items-center justify-between group p-2 hover:bg-slate-50 rounded-xl transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+                          <span className="text-sm font-medium text-slate-700">{item.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-right">
+                          <span className="text-sm font-bold text-slate-900">{formatCurrency(item.value)}</span>
+                          <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-md">
+                            {((item.value / categoryData.find(c => c.name === selectedCategory)?.value) * 100).toFixed(1)}%
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    <div className="mt-6 pt-4 border-t border-slate-100 flex justify-between items-center">
+                      <span className="text-sm font-bold text-slate-500 uppercase tracking-wider">Total {selectedCategory}</span>
+                      <span className="text-xl font-black text-primary">
+                        {formatCurrency(categoryData.find(c => c.name === selectedCategory)?.value || 0)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-8 bg-blue-50/50 p-4 rounded-2xl border border-blue-100/50 flex items-start gap-4">
+                <TrendingDown className="w-5 h-5 text-blue-600 mt-0.5" />
+                <div>
+                  <h5 className="text-sm font-bold text-blue-900">Insight Rápido</h5>
+                  <p className="text-xs text-blue-700/80 leading-relaxed mt-1">
+                    {detailedCategoryData[selectedCategory]?.[0]?.name} representa a maior parte deste gasto. 
+                    Monitorar esses valores pode ajudar a identificar oportunidades de economia mensal.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       <Card className="w-full">
         <CardHeader>
