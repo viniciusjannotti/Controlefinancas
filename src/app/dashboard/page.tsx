@@ -27,25 +27,12 @@ import {
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { formatCurrency, cn } from "@/lib/utils";
+import React, { useState, useEffect } from "react";
+import { getEarnings, getExpenses } from "@/lib/firebase/db";
+import { startOfMonth, subMonths, format, isWithinInterval, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
-const monthlyData = [
-  { name: "Jan", earnings: 4500, expenses: 3200 },
-  { name: "Fev", earnings: 5200, expenses: 3800 },
-  { name: "Mar", earnings: 4800, expenses: 3100 },
-  { name: "Abr", earnings: 6100, expenses: 4200 },
-  { name: "Mai", earnings: 5900, expenses: 3900 },
-  { name: "Jun", earnings: 6500, expenses: 4100 },
-];
-
-const categoryData = [
-  { name: "Moradia", value: 4500, color: "#3B82F6" },
-  { name: "Alimentação", value: 1200, color: "#60A5FA" },
-  { name: "Transporte", value: 800, color: "#93C5FD" },
-  { name: "Saúde", value: 600, color: "#BFDBFE" },
-  { name: "Lazer", value: 1000, color: "#DBEAFE" },
-];
-
-const investmentData = [
+const investmentDataMock = [
   { name: "Jan", balance: 10000 },
   { name: "Fev", balance: 11500 },
   { name: "Mar", balance: 12100 },
@@ -55,6 +42,119 @@ const investmentData = [
 ];
 
 export default function Dashboard() {
+  const [loading, setLoading] = useState(true);
+  const [metrics, setMetrics] = useState({
+    monthlyEarnings: 0,
+    monthlyExpenses: 0,
+    netBalance: 0,
+    totalInvested: 16200, // Keep mock for now
+  });
+  const [monthlyData, setMonthlyData] = useState<any[]>([]);
+  const [categoryData, setCategoryData] = useState<any[]>([]);
+
+  useEffect(() => {
+    async function fetchData() {
+      setLoading(true);
+      try {
+        const [mariaEarnings, viniciusEarnings, allExpenses] = await Promise.all([
+          getEarnings("maria") as Promise<any[]>,
+          getEarnings("vinicius") as Promise<any[]>,
+          getExpenses() as Promise<any[]>
+        ]);
+
+        const allEarnings = [...mariaEarnings, ...viniciusEarnings];
+        const now = new Date();
+        const startOfCurrentMonth = startOfMonth(now);
+        
+        // 1. Calculate Summary Metrics (Current Month)
+        const currentMonthEarnings = allEarnings
+          .filter(e => {
+            const d = e.date?.seconds ? new Date(e.date.seconds * 1000) : new Date(e.date + 'T00:00:00');
+            return d >= startOfCurrentMonth;
+          })
+          .reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+
+        const currentMonthExpenses = allExpenses
+          .filter(e => {
+            const d = e.date?.seconds ? new Date(e.date.seconds * 1000) : new Date(e.date + 'T00:00:00');
+            return d >= startOfCurrentMonth;
+          })
+          .reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+
+        setMetrics(prev => ({
+          ...prev,
+          monthlyEarnings: currentMonthEarnings,
+          monthlyExpenses: currentMonthExpenses,
+          netBalance: currentMonthEarnings - currentMonthExpenses
+        }));
+
+        // 2. Aggregate Monthly Data (Last 6 Months)
+        const last6Months = Array.from({ length: 6 }, (_, i) => {
+          const d = subMonths(now, 5 - i);
+          return {
+            name: format(d, 'MMM', { locale: ptBR }),
+            monthKey: format(d, 'yyyy-MM'),
+            earnings: 0,
+            expenses: 0
+          };
+        });
+
+        allEarnings.forEach(e => {
+          const d = e.date?.seconds ? new Date(e.date.seconds * 1000) : new Date(e.date + 'T00:00:00');
+          const key = format(d, 'yyyy-MM');
+          const monthIdx = last6Months.findIndex(m => m.monthKey === key);
+          if (monthIdx !== -1) {
+            last6Months[monthIdx].earnings += (Number(e.amount) || 0);
+          }
+        });
+
+        allExpenses.forEach(e => {
+          const d = e.date?.seconds ? new Date(e.date.seconds * 1000) : new Date(e.date + 'T00:00:00');
+          const key = format(d, 'yyyy-MM');
+          const monthIdx = last6Months.findIndex(m => m.monthKey === key);
+          if (monthIdx !== -1) {
+            last6Months[monthIdx].expenses += (Number(e.amount) || 0);
+          }
+        });
+
+        setMonthlyData(last6Months);
+
+        // 3. Aggregate Expenses by Category
+        const expensesByCategory: Record<string, number> = {};
+        allExpenses.forEach(e => {
+          const parentCategory = (e.category || "Outros").split(" > ")[0];
+          expensesByCategory[parentCategory] = (expensesByCategory[parentCategory] || 0) + (Number(e.amount) || 0);
+        });
+
+        const colors = ["#3B82F6", "#60A5FA", "#93C5FD", "#BFDBFE", "#DBEAFE", "#1D4ED8", "#1E40AF"];
+        const catData = Object.entries(expensesByCategory)
+          .map(([name, value], i) => ({
+            name,
+            value,
+            color: colors[i % colors.length]
+          }))
+          .sort((a, b) => b.value - a.value);
+
+        setCategoryData(catData);
+
+      } catch (error) {
+        console.error("Erro ao carregar dados do dashboard:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <p className="text-slate-500 animate-pulse">Carregando dados do dashboard...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col gap-2">
@@ -65,15 +165,15 @@ export default function Dashboard() {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <SummaryCard 
           title="Receita Mensal" 
-          value={6500} 
+          value={metrics.monthlyEarnings} 
           trend="+12%" 
           trendType="up"
           icon={TrendingUp}
           color="blue"
         />
         <SummaryCard 
-          title="Despesas Mensais" 
-          value={4100} 
+          title="Gastos Mensais" 
+          value={metrics.monthlyExpenses} 
           trend="+5%" 
           trendType="down"
           icon={TrendingDown}
@@ -81,7 +181,7 @@ export default function Dashboard() {
         />
         <SummaryCard 
           title="Saldo Líquido" 
-          value={2400} 
+          value={metrics.netBalance} 
           trend="+18%" 
           trendType="up"
           icon={DollarSign}
@@ -89,7 +189,7 @@ export default function Dashboard() {
         />
         <SummaryCard 
           title="Total Investido" 
-          value={16200} 
+          value={metrics.totalInvested} 
           trend="+4.5%" 
           trendType="up"
           icon={LineChartIcon}
@@ -100,7 +200,7 @@ export default function Dashboard() {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
         <Card className="col-span-4">
           <CardHeader>
-            <CardTitle>Ganhos vs Despesas</CardTitle>
+            <CardTitle>Ganhos vs Gastos</CardTitle>
           </CardHeader>
           <CardContent className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -111,9 +211,10 @@ export default function Dashboard() {
                 <Tooltip 
                   cursor={{ fill: '#F8FAFC' }}
                   contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                  formatter={(value: any) => formatCurrency(Number(value))}
                 />
-                <Bar dataKey="earnings" fill="#3B82F6" radius={[4, 4, 0, 0]} barSize={20} />
-                <Bar dataKey="expenses" fill="#DBEAFE" radius={[4, 4, 0, 0]} barSize={20} />
+                <Bar dataKey="earnings" name="Ganhos" fill="#3B82F6" radius={[4, 4, 0, 0]} barSize={20} />
+                <Bar dataKey="expenses" name="Gastos" fill="#DBEAFE" radius={[4, 4, 0, 0]} barSize={20} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -121,29 +222,34 @@ export default function Dashboard() {
 
         <Card className="col-span-3">
           <CardHeader>
-            <CardTitle>Despesas por Categoria</CardTitle>
+            <CardTitle>Gastos por Categoria</CardTitle>
           </CardHeader>
           <CardContent className="h-[300px] flex items-center justify-center">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={categoryData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {categoryData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+            {categoryData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={categoryData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {categoryData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                    formatter={(value: any) => formatCurrency(Number(value))}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className="text-slate-400 text-sm italic">Nenhum gasto registrado.</p>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -154,7 +260,7 @@ export default function Dashboard() {
         </CardHeader>
         <CardContent className="h-[300px]">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={investmentData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <AreaChart data={investmentDataMock} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.1}/>
@@ -179,7 +285,7 @@ export default function Dashboard() {
           </ResponsiveContainer>
         </CardContent>
       </Card>
-    </div>
+</div>
   );
 }
 

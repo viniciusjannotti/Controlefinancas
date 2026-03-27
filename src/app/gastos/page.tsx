@@ -272,9 +272,16 @@ function ExpensesTable({
               data.map((expense) => (
                 <TableRow key={expense.id}>
                   <TableCell className="font-medium whitespace-nowrap">
-                    {expense.date?.seconds ? formatDate(new Date(expense.date.seconds * 1000)) : formatDate(new Date(expense.date))}
+                    {(() => {
+                      const d = expense.date?.seconds 
+                        ? new Date(expense.date.seconds * 1000) 
+                        : (typeof expense.date === 'string' 
+                            ? new Date(expense.date + 'T00:00:00') // Force local midnight
+                            : new Date(expense.date));
+                      return formatDate(d);
+                    })()}
                   </TableCell>
-                  <TableCell className="font-semibold">{expense.description}</TableCell>
+                  <TableCell className="font-semibold">{expense.description || expense.category.split(" > ").pop()}</TableCell>
                   <TableCell>
                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: `${getCategoryColor(expense.category || "")}15`, color: getCategoryColor(expense.category || "") }}>
                       {expense.category}
@@ -376,8 +383,8 @@ function AddExpenseForm({
   }, [editingExpense]);
 
   const handleSubmit = async () => {
-    if (!formData.description || !formData.amount) {
-      alert("Por favor, preencha a descrição e o valor.");
+    if (!formData.amount) {
+      alert("Por favor, preencha o valor.");
       return;
     }
 
@@ -441,7 +448,7 @@ function AddExpenseForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="desc">Descrição</Label>
+          <Label htmlFor="desc">Descrição <span className="text-slate-400 font-normal">(Opcional)</span></Label>
           <Input 
             id="desc" 
             placeholder="Ex: Supermercado Mensal" 
