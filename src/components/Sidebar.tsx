@@ -7,17 +7,17 @@ import {
   TrendingUp, 
   Wallet, 
   PieChart, 
-  Settings,
+  Settings as SettingsIcon,
   X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navigation = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Painel", href: "/dashboard", icon: LayoutDashboard },
   { name: "Ganhos", href: "/ganhos", icon: TrendingUp },
   { name: "Gastos", href: "/gastos", icon: Wallet },
-  { name: "Investments", href: "/investments", icon: PieChart },
-  { name: "Settings", href: "/settings", icon: Settings },
+  { name: "Investimentos", href: "/investments", icon: PieChart },
+  { name: "Configurações", href: "/settings", icon: SettingsIcon },
 ];
 
 export function Sidebar() {
@@ -62,7 +62,7 @@ export function Sidebar() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-slate-900 truncate">M & V</p>
-            <p className="text-xs text-slate-500 truncate">Family Plan</p>
+            <p className="text-xs text-slate-500 truncate">Plano Familiar</p>
           </div>
         </div>
       </div>
