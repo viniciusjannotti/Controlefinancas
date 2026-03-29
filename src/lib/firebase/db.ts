@@ -145,3 +145,21 @@ export const updateSettings = async (data: any) => {
   const docRef = doc(db, "settings", "global");
   await setDoc(docRef, data, { merge: true });
 };
+
+// Reminders
+export const addReminder = async (data: any) => {
+  return await addDoc(collection(db, "reminders"), {
+    ...data,
+    createdAt: Timestamp.now(),
+  });
+};
+
+export const getReminders = async () => {
+  const q = query(collection(db, "reminders"), orderBy("dueDay", "asc"));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+};
+
+export const deleteReminder = async (id: string) => {
+  await deleteDoc(doc(db, "reminders", id));
+};
