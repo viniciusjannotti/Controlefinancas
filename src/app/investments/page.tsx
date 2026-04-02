@@ -41,8 +41,9 @@ import {
 } from "@/components/ui/Tabs";
 import { Button, Input, Label, Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/index";
 import { formatCurrency, formatDate, cn } from "@/lib/utils";
-import { addInvestment, getInvestments, updateInvestmentValue } from "@/lib/firebase/db";
+import { addInvestment, getInvestments, updateInvestment, updateInvestmentValue, deleteInvestment } from "@/lib/firebase/db";
 import { fetchStockPrices } from "@/lib/stockApi";
+import { MoreVertical, Trash2, Edit3, PlusCircle } from "lucide-react";
 
 const assetTypes = ["Ações", "ETFs", "Renda Fixa", "Crypto", "Outro"];
 
@@ -72,6 +73,8 @@ export default function InvestmentsPage() {
   const [investments, setInvestments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editingInvestment, setEditingInvestment] = useState<any | null>(null);
+  const [isContribution, setIsContribution] = useState(false);
 
   const fetchInvestments = React.useCallback(async () => {
     setLoading(true);
@@ -173,7 +176,17 @@ export default function InvestmentsPage() {
             <TabsTrigger value="maria" activeTab={activeTab} setActiveTab={setActiveTab}>Maria Cecília</TabsTrigger>
             <TabsTrigger value="vinicius" activeTab={activeTab} setActiveTab={setActiveTab}>Vinícius</TabsTrigger>
           </TabsList>
-          <Button variant={showForm ? "ghost" : "outline"} size="sm" onClick={() => setShowForm(!showForm)}>
+          <Button 
+            variant={showForm ? "ghost" : "outline"} 
+            size="sm" 
+            onClick={() => {
+              if (showForm) {
+                setEditingInvestment(null);
+                setIsContribution(false);
+              }
+              setShowForm(!showForm);
+            }}
+          >
             <Plus className={cn("w-4 h-4 mr-2 transition-transform", showForm && "rotate-45")} />
             {showForm ? "Cancelar" : "Novo Ativo"}
           </Button>
@@ -187,11 +200,41 @@ export default function InvestmentsPage() {
                   type="maria" 
                   onSave={() => {
                     setShowForm(false);
+                    setEditingInvestment(null);
+                    setIsContribution(false);
                     fetchInvestments();
-                  }} 
+                  }}
+                  onCancel={() => {
+                    setShowForm(false);
+                    setEditingInvestment(null);
+                    setIsContribution(false);
+                  }}
+                  editingInvestment={editingInvestment}
+                  isContribution={isContribution}
                 />
               )}
-              <InvestmentsTable data={investments} loading={loading} />
+              <InvestmentsTable 
+                data={investments} 
+                loading={loading} 
+                onEdit={(asset) => {
+                  setEditingInvestment(asset);
+                  setIsContribution(false);
+                  setShowForm(true);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                onDelete={async (id) => {
+                  if (confirm("Deseja realmente excluir este ativo?")) {
+                    await deleteInvestment(id);
+                    fetchInvestments();
+                  }
+                }}
+                onNewContribution={(asset) => {
+                  setEditingInvestment(asset);
+                  setIsContribution(true);
+                  setShowForm(true);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+              />
             </div>
             <div className="space-y-6">
               <AllocationCard distribution={distribution} COLORS={COLORS} />
@@ -208,11 +251,41 @@ export default function InvestmentsPage() {
                   type="vinicius" 
                   onSave={() => {
                     setShowForm(false);
+                    setEditingInvestment(null);
+                    setIsContribution(false);
                     fetchInvestments();
-                  }} 
+                  }}
+                  onCancel={() => {
+                    setShowForm(false);
+                    setEditingInvestment(null);
+                    setIsContribution(false);
+                  }}
+                  editingInvestment={editingInvestment}
+                  isContribution={isContribution}
                 />
               )}
-              <InvestmentsTable data={investments} loading={loading} />
+              <InvestmentsTable 
+                data={investments} 
+                loading={loading} 
+                onEdit={(asset) => {
+                  setEditingInvestment(asset);
+                  setIsContribution(false);
+                  setShowForm(true);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                onDelete={async (id) => {
+                  if (confirm("Deseja realmente excluir este ativo?")) {
+                    await deleteInvestment(id);
+                    fetchInvestments();
+                  }
+                }}
+                onNewContribution={(asset) => {
+                  setEditingInvestment(asset);
+                  setIsContribution(true);
+                  setShowForm(true);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+              />
             </div>
             <div className="space-y-6">
               <AllocationCard distribution={distribution} COLORS={COLORS} />
@@ -244,7 +317,21 @@ export default function InvestmentsPage() {
   );
 }
 
-function InvestmentsTable({ data, loading }: { data: any[], loading: boolean }) {
+function InvestmentsTable({ 
+  data, 
+  loading,
+  onEdit,
+  onDelete,
+  onNewContribution
+}: { 
+  data: any[], 
+  loading: boolean,
+  onEdit: (asset: any) => void,
+  onDelete: (id: string) => void,
+  onNewContribution: (asset: any) => void
+}) {
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
   if (loading) {
     return (
       <Card>
@@ -271,12 +358,13 @@ function InvestmentsTable({ data, loading }: { data: any[], loading: boolean }) 
               <TableHead className="text-right">Investido</TableHead>
               <TableHead className="text-right">Atual</TableHead>
               <TableHead className="text-right">G/P</TableHead>
+              <TableHead className="w-10"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {data.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-slate-400">
+                <TableCell colSpan={7} className="text-center py-8 text-slate-400">
                   Nenhum ativo encontrado.
                 </TableCell>
               </TableRow>
@@ -304,6 +392,50 @@ function InvestmentsTable({ data, loading }: { data: any[], loading: boolean }) 
                         {((gp / (asset.invested || 1)) * 100).toFixed(1)}%
                       </div>
                     </TableCell>
+                    <TableCell className="relative px-0">
+                      <Button 
+                        variant="ghost" 
+                        className="h-8 w-8 p-0"
+                        onClick={() => setOpenMenuId(openMenuId === asset.id ? null : asset.id)}
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </Button>
+                      
+                      {openMenuId === asset.id && (
+                        <div className="absolute right-0 top-full mt-1 z-50 w-44 bg-white rounded-xl shadow-xl border border-slate-200 py-1 overflow-hidden animate-in fade-in zoom-in duration-200">
+                          <button 
+                            className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                            onClick={() => {
+                              onNewContribution(asset);
+                              setOpenMenuId(null);
+                            }}
+                          >
+                            <PlusCircle className="w-4 h-4 text-primary" />
+                            Novo Aporte
+                          </button>
+                          <button 
+                            className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                            onClick={() => {
+                              onEdit(asset);
+                              setOpenMenuId(null);
+                            }}
+                          >
+                            <Edit3 className="w-4 h-4" />
+                            Editar Ativo
+                          </button>
+                          <button 
+                            className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 border-t border-slate-100"
+                            onClick={() => {
+                              onDelete(asset.id);
+                              setOpenMenuId(null);
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Excluir
+                          </button>
+                        </div>
+                      )}
+                    </TableCell>
                   </TableRow>
                 );
               })
@@ -315,9 +447,21 @@ function InvestmentsTable({ data, loading }: { data: any[], loading: boolean }) 
   );
 }
 
-function AddInvestmentForm({ type, onSave }: { type: "maria" | "vinicius", onSave: () => void }) {
+function AddInvestmentForm({ 
+  type, 
+  onSave,
+  onCancel,
+  editingInvestment,
+  isContribution
+}: { 
+  type: "maria" | "vinicius", 
+  onSave: () => void,
+  onCancel: () => void,
+  editingInvestment?: any | null,
+  isContribution?: boolean
+}) {
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
+  const defaultForm = {
     name: "",
     ticker: "",
     assetType: "Ações",
@@ -327,7 +471,27 @@ function AddInvestmentForm({ type, onSave }: { type: "maria" | "vinicius", onSav
     invested: "",
     currentValue: "",
     date: new Date().toISOString().split('T')[0]
-  });
+  };
+  const [formData, setFormData] = useState(defaultForm);
+
+  React.useEffect(() => {
+    if (editingInvestment) {
+      setFormData({
+        name: editingInvestment.name || "",
+        ticker: editingInvestment.ticker || "",
+        assetType: editingInvestment.assetType || "Ações",
+        broker: editingInvestment.broker || "",
+        // Se for Novo Aporte, limpamos quantidade e preço médio
+        quantity: isContribution ? "" : (editingInvestment.quantity?.toString() || ""),
+        purchasePrice: isContribution ? "" : (editingInvestment.purchasePrice?.toString() || ""),
+        invested: isContribution ? "" : (editingInvestment.invested?.toString() || ""),
+        currentValue: isContribution ? "" : (editingInvestment.currentValue?.toString() || ""),
+        date: isContribution ? new Date().toISOString().split('T')[0] : (editingInvestment.date || new Date().toISOString().split('T')[0])
+      });
+    } else {
+      setFormData(defaultForm);
+    }
+  }, [editingInvestment, isContribution]);
 
   const handleSubmit = async () => {
     if (!formData.name || !formData.invested) {
@@ -340,14 +504,20 @@ function AddInvestmentForm({ type, onSave }: { type: "maria" | "vinicius", onSav
       const purchasePriceVal = Number(formData.purchasePrice) || (Number(formData.invested) / Number(formData.quantity || 1));
       const investedVal = Number(formData.invested) || (Number(formData.quantity) * Number(formData.purchasePrice));
       
-      await addInvestment(type, {
+      const payload = {
         ...formData,
         ticker: formData.ticker.toUpperCase().trim(),
         quantity: Number(formData.quantity) || 1,
         purchasePrice: purchasePriceVal,
         invested: investedVal,
         currentValue: Number(formData.currentValue || investedVal)
-      });
+      };
+
+      if (editingInvestment && !isContribution) {
+        await updateInvestment(editingInvestment.id, payload);
+      } else {
+        await addInvestment(type, payload);
+      }
       onSave();
     } catch (error) {
       console.error("Erro ao salvar investimento:", error);
@@ -360,8 +530,14 @@ function AddInvestmentForm({ type, onSave }: { type: "maria" | "vinicius", onSav
   return (
     <Card className="border-primary/20 bg-primary/5">
       <CardHeader>
-        <CardTitle>Novo Ativo</CardTitle>
-        <CardDescription>Registre um novo investimento no portfólio.</CardDescription>
+        <CardTitle>
+          {isContribution ? "Novo Aporte" : (editingInvestment ? "Editar Ativo" : "Novo Ativo")}
+        </CardTitle>
+        <CardDescription>
+          {isContribution 
+            ? `Registre uma nova compra de ${formData.name}.` 
+            : (editingInvestment ? "Atualize as informações do ativo." : "Registre um novo investimento no portfólio.")}
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
@@ -464,13 +640,20 @@ function AddInvestmentForm({ type, onSave }: { type: "maria" | "vinicius", onSav
           </div>
         </div>
 
-        <Button 
-          className="w-full" 
-          onClick={handleSubmit}
-          disabled={loading}
-        >
-          {loading ? "Salvando..." : "Registrar Ativo"}
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            className="flex-1" 
+            onClick={handleSubmit}
+            disabled={loading}
+          >
+            {loading ? "Salvando..." : (editingInvestment && !isContribution ? "Atualizar Ativo" : "Registrar Ativo")}
+          </Button>
+          {(!!editingInvestment || !!onCancel) && (
+            <Button variant="outline" onClick={onCancel} disabled={loading}>
+              Cancelar
+            </Button>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

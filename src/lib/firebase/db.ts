@@ -94,6 +94,19 @@ export const updateInvestmentValue = async (id: string, newValue: number) => {
   });
 };
 
+export const updateInvestment = async (id: string, data: any) => {
+  const investmentRef = doc(db, "investments", id);
+  await updateDoc(investmentRef, {
+    ...data,
+    updatedAt: Timestamp.now(),
+  });
+};
+
+export const deleteInvestment = async (id: string) => {
+  const docRef = doc(db, "investments", id);
+  await deleteDoc(docRef);
+};
+
 export const getInvestments = async (userId: string) => {
   const q = query(
     collection(db, "investments"), 
