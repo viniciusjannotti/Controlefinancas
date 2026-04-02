@@ -42,6 +42,7 @@ import {
 import { Button, Input, Label, Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/index";
 import { formatCurrency, formatDate, cn } from "@/lib/utils";
 import { addInvestment, getInvestments, updateInvestmentValue } from "@/lib/firebase/db";
+import { fetchStockPrices } from "@/lib/stockApi";
 
 const assetTypes = ["Ações", "ETFs", "Renda Fixa", "Crypto", "Outro"];
 
@@ -84,6 +85,45 @@ export default function InvestmentsPage() {
     }
   }, [activeTab]);
 
+  const handleRefreshQuotes = async () => {
+    const tickers = investments
+      .filter(inv => inv.ticker)
+      .map(inv => inv.ticker);
+
+    if (tickers.length === 0) {
+      alert("Nenhum ativo com Ticker cadastrado para atualizar.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const prices = await fetchStockPrices(tickers);
+      let updatedCount = 0;
+
+      for (const inv of investments) {
+        if (inv.ticker) {
+          const rawTicker = inv.ticker.toUpperCase();
+          const saTicker = `${rawTicker}.SA`;
+          const currentPrice = prices[rawTicker] || prices[saTicker];
+
+          if (currentPrice) {
+            const newTotalValue = (Number(inv.quantity) || 1) * currentPrice;
+            await updateInvestmentValue(inv.id, newTotalValue);
+            updatedCount++;
+          }
+        }
+      }
+      
+      await fetchInvestments();
+      alert(`${updatedCount} ativos atualizados com sucesso!`);
+    } catch (error) {
+      console.error("Erro ao atualizar cotações:", error);
+      alert("Erro ao conectar com a API de cotações.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   React.useEffect(() => {
     fetchInvestments();
   }, [fetchInvestments]);
@@ -95,7 +135,7 @@ export default function InvestmentsPage() {
 
   const distribution = Object.entries(
     investments.reduce((acc, curr) => {
-      acc[curr.type] = (acc[curr.type] || 0) + (Number(curr.currentValue) || 0);
+      acc[curr.type || curr.assetType] = (acc[curr.type || curr.assetType] || 0) + (Number(curr.currentValue) || 0);
       return acc;
     }, {} as Record<string, number>)
   ).map(([name, value]) => ({ name, value }));
@@ -109,10 +149,16 @@ export default function InvestmentsPage() {
           <h2 className="text-3xl font-bold tracking-tight text-slate-900">Investimentos</h2>
           <p className="text-slate-500 text-lg">Acompanhe a evolução do patrimônio.</p>
         </div>
-        <Button>
-          <RefreshCw className="w-4 h-4 mr-2" />
-          Atualizar Cotações
-        </Button>
+        <div className="flex gap-3">
+          <Button variant="outline" onClick={fetchInvestments} disabled={loading}>
+            <RefreshCw className={cn("w-4 h-4 mr-2", loading && "animate-spin")} />
+            Sincronizar Banco
+          </Button>
+          <Button onClick={handleRefreshQuotes} disabled={loading}>
+            <TrendingUp className="w-4 h-4 mr-2" />
+            Atualizar Cotações
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
@@ -239,9 +285,14 @@ function InvestmentsTable({ data, loading }: { data: any[], loading: boolean }) 
                 const gp = (asset.currentValue || 0) - (asset.invested || 0);
                 return (
                   <TableRow key={asset.id}>
-                    <TableCell className="font-semibold">{asset.name}</TableCell>
+                    <TableCell className="font-semibold">{asset.name} {asset.ticker && <span className="text-xs font-normal text-slate-400">({asset.ticker})</span>}</TableCell>
                     <TableCell>{asset.assetType}</TableCell>
-                    <TableCell className="text-slate-500 text-xs">{asset.broker}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="text-slate-500 text-xs">{asset.broker}</span>
+                        {asset.quantity && <span className="text-[10px] text-slate-400">{asset.quantity} un. à {formatCurrency(asset.purchasePrice || (asset.invested / asset.quantity))}</span>}
+                      </div>
+                    </TableCell>
                     <TableCell className="text-right">{formatCurrency(asset.invested)}</TableCell>
                     <TableCell className="text-right font-bold">{formatCurrency(asset.currentValue)}</TableCell>
                     <TableCell className={cn(
@@ -249,6 +300,9 @@ function InvestmentsTable({ data, loading }: { data: any[], loading: boolean }) 
                       gp >= 0 ? "text-emerald-500" : "text-red-500"
                     )}>
                       {gp >= 0 ? "+" : ""}{formatCurrency(gp)}
+                      <div className="text-[10px] opacity-80">
+                        {((gp / (asset.invested || 1)) * 100).toFixed(1)}%
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
@@ -265,8 +319,11 @@ function AddInvestmentForm({ type, onSave }: { type: "maria" | "vinicius", onSav
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
+    ticker: "",
     assetType: "Ações",
     broker: "",
+    quantity: "",
+    purchasePrice: "",
     invested: "",
     currentValue: "",
     date: new Date().toISOString().split('T')[0]
@@ -280,10 +337,16 @@ function AddInvestmentForm({ type, onSave }: { type: "maria" | "vinicius", onSav
 
     setLoading(true);
     try {
+      const purchasePriceVal = Number(formData.purchasePrice) || (Number(formData.invested) / Number(formData.quantity || 1));
+      const investedVal = Number(formData.invested) || (Number(formData.quantity) * Number(formData.purchasePrice));
+      
       await addInvestment(type, {
         ...formData,
-        invested: Number(formData.invested),
-        currentValue: Number(formData.currentValue || formData.invested)
+        ticker: formData.ticker.toUpperCase().trim(),
+        quantity: Number(formData.quantity) || 1,
+        purchasePrice: purchasePriceVal,
+        invested: investedVal,
+        currentValue: Number(formData.currentValue || investedVal)
       });
       onSave();
     } catch (error) {
@@ -306,11 +369,23 @@ function AddInvestmentForm({ type, onSave }: { type: "maria" | "vinicius", onSav
             <Label htmlFor="name">Nome do Ativo</Label>
             <Input 
               id="name" 
-              placeholder="Ex: IVVB11, BTC, CDB" 
+              placeholder="Ex: BB Seguridade, Bitcoin" 
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             />
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="ticker">Ticker (para cotação)</Label>
+            <Input 
+              id="ticker" 
+              placeholder="Ex: BBSE3, IVVB11" 
+              value={formData.ticker}
+              onChange={(e) => setFormData({ ...formData, ticker: e.target.value })}
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="assetType">Tipo</Label>
             <select 
@@ -322,18 +397,52 @@ function AddInvestmentForm({ type, onSave }: { type: "maria" | "vinicius", onSav
               {assetTypes.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="broker">Corretora</Label>
             <Input 
               id="broker" 
-              placeholder="Ex: XP, Inter, Binance" 
+              placeholder="Ex: XP, BTG, Inter" 
               value={formData.broker}
               onChange={(e) => setFormData({ ...formData, broker: e.target.value })}
             />
           </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="quantity">Quantidade</Label>
+            <Input 
+              id="quantity" 
+              type="number" 
+              placeholder="0" 
+              value={formData.quantity}
+              onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="pPrice">Preço Médio (Cota)</Label>
+            <Input 
+              id="pPrice" 
+              type="number" 
+              placeholder="0,00" 
+              value={formData.purchasePrice}
+              onChange={(e) => setFormData({ ...formData, purchasePrice: e.target.value })}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="invested">Total Investido</Label>
+            <Input 
+              id="invested" 
+              type="number" 
+              placeholder="Automático" 
+              value={formData.invested || (Number(formData.quantity) * Number(formData.purchasePrice) || "")}
+              readOnly={!!(formData.quantity && formData.purchasePrice)}
+              onChange={(e) => setFormData({ ...formData, invested: e.target.value })}
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="date">Data da Compra</Label>
             <Input 
@@ -343,21 +452,8 @@ function AddInvestmentForm({ type, onSave }: { type: "maria" | "vinicius", onSav
               onChange={(e) => setFormData({ ...formData, date: e.target.value })}
             />
           </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="invested">Valor Investido</Label>
-            <Input 
-              id="invested" 
-              type="number" 
-              placeholder="0,00" 
-              value={formData.invested}
-              onChange={(e) => setFormData({ ...formData, invested: e.target.value })}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="current">Valor Atual</Label>
+            <Label htmlFor="current">Valor Atual (Total)</Label>
             <Input 
               id="current" 
               type="number" 
