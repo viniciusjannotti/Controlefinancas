@@ -102,23 +102,37 @@ export default function InvestmentsPage() {
     try {
       const prices = await fetchStockPrices(tickers);
       let updatedCount = 0;
+      const failedTickers: string[] = [];
 
       for (const inv of investments) {
         if (inv.ticker) {
-          const rawTicker = inv.ticker.toUpperCase();
-          const saTicker = `${rawTicker}.SA`;
-          const currentPrice = prices[rawTicker] || prices[saTicker];
+          const tickerUpper = inv.ticker.toUpperCase().trim();
+          // Tenta encontrar com ou sem .SA
+          const currentPrice = prices[tickerUpper] || prices[`${tickerUpper}.SA`];
 
           if (currentPrice) {
             const newTotalValue = (Number(inv.quantity) || 1) * currentPrice;
             await updateInvestmentValue(inv.id, newTotalValue);
             updatedCount++;
+          } else {
+            failedTickers.push(tickerUpper);
           }
         }
       }
       
       await fetchInvestments();
-      alert(`${updatedCount} ativos atualizados com sucesso!`);
+      
+      if (updatedCount === 0 && tickers.length > 0) {
+        alert(
+          `❌ Nenhum dos ativos foi atualizado.\n\n` +
+          `Tentamos buscar: ${tickers.join(', ')}\n\n` +
+          `Verifique se os códigos (tickers) estão corretos e se você já fez o Redeploy no Vercel com o Token.`
+        );
+      } else if (failedTickers.length > 0) {
+        alert(`${updatedCount} ativos atualizados, mas não encontramos preço para: ${failedTickers.join(', ')}`);
+      } else {
+        alert(`${updatedCount} ativos atualizados com sucesso!`);
+      }
     } catch (error: any) {
       console.error("Erro ao atualizar cotações:", error);
       if (error?.message === 'BRAPI_AUTH_REQUIRED') {

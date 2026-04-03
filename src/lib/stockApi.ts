@@ -4,8 +4,9 @@ export async function fetchStockPrices(tickers: string[]) {
   try {
     // Brapi requires authentication for most assets.
     // Only PETR4, MGLU3, VALE3, ITUB4 work without a token (testing only).
+    // Brapi requires .SA for most B3 assets.
     const symbols = tickers
-      .map(t => t.includes('.') ? t.toUpperCase() : t.toUpperCase())
+      .map(t => t.includes('.') ? t.toUpperCase() : `${t.toUpperCase()}.SA`)
       .join(',');
     
     const token = process.env.NEXT_PUBLIC_BRAPI_TOKEN || '';
