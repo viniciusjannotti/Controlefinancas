@@ -119,9 +119,22 @@ export default function InvestmentsPage() {
       
       await fetchInvestments();
       alert(`${updatedCount} ativos atualizados com sucesso!`);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao atualizar cotações:", error);
-      alert("Erro ao conectar com a API de cotações.");
+      if (error?.message === 'BRAPI_AUTH_REQUIRED') {
+        alert(
+          "🔐 A API da Brapi requer um token gratuito para acessar este ativo.\n\n" +
+          "Como configurar:\n" +
+          "1. Acesse https://brapi.dev e crie uma conta gratuita\n" +
+          "2. Copie seu token na seção 'Dashboard'\n" +
+          "3. Crie o arquivo .env.local na raiz do projeto\n" +
+          "4. Adicione a linha: NEXT_PUBLIC_BRAPI_TOKEN=seu_token_aqui\n" +
+          "5. Reinicie o servidor (npm run dev)\n\n" +
+          "O plano gratuito permite 15.000 consultas/mês."
+        );
+      } else {
+        alert("Erro ao conectar com a API de cotações. Verifique sua conexão.");
+      }
     } finally {
       setLoading(false);
     }
