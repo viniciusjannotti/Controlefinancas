@@ -15,8 +15,7 @@ import {
   Edit3,
   MoreVertical,
   Gift,
-  DollarSign,
-  Users
+  DollarSign
 } from "lucide-react";
 import { 
   LineChart,
@@ -70,7 +69,7 @@ const growthData = [
 ];
 
 // ──────────────────────────────────────
-// Consolidation logic
+// Consolidation logic (By Ticker)
 // ──────────────────────────────────────
 function consolidateInvestments(investments: any[], dividends: any[]) {
   const groups: Record<string, any> = {};
@@ -125,8 +124,8 @@ function consolidateInvestments(investments: any[], dividends: any[]) {
 // ──────────────────────────────────────
 export default function InvestmentsPage() {
   const [activeTab, setActiveTab] = useState("maria");
-  const [allInvestments, setAllInvestments] = useState<any[]>([]);
-  const [allDividends, setAllDividends] = useState<any[]>([]);
+  const [investments, setInvestments] = useState<any[]>([]);
+  const [dividends, setDividends] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [showDivForm, setShowDivForm] = useState(false);
@@ -138,33 +137,21 @@ export default function InvestmentsPage() {
   const fetchData = React.useCallback(async () => {
     setLoading(true);
     try {
-      const [mariaInv, viniciusInv, mariaDiv, viniciusDiv] = await Promise.all([
-        getInvestments("maria"),
-        getInvestments("vinicius"),
-        getDividends("maria"),
-        getDividends("vinicius")
+      const [invData, divData] = await Promise.all([
+        getInvestments(activeTab),
+        getDividends(activeTab)
       ]);
-      
-      const combinedInv = [
-        ...mariaInv.map(i => ({ ...i, user: 'maria' })), 
-        ...viniciusInv.map(i => ({ ...i, user: 'vinicius' }))
-      ];
-      const combinedDiv = [
-        ...mariaDiv.map(d => ({ ...d, user: 'maria' })), 
-        ...viniciusDiv.map(d => ({ ...d, user: 'vinicius' }))
-      ];
-
-      setAllInvestments(combinedInv);
-      setAllDividends(combinedDiv);
+      setInvestments(invData);
+      setDividends(divData);
     } catch (error) {
       console.error("Erro ao buscar dados:", error);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activeTab]);
 
   const handleRefreshQuotes = async () => {
-    const tickers = allInvestments
+    const tickers = investments
       .filter(inv => inv.ticker)
       .map(inv => inv.ticker);
 
@@ -179,7 +166,7 @@ export default function InvestmentsPage() {
       let updatedCount = 0;
       const failedTickers: string[] = [];
 
-      for (const inv of allInvestments) {
+      for (const inv of investments) {
         if (inv.ticker) {
           const tickerUpper = inv.ticker.toUpperCase().trim();
           const currentPrice = prices[tickerUpper] || prices[`${tickerUpper}.SA`];
@@ -217,24 +204,17 @@ export default function InvestmentsPage() {
     fetchData();
   }, [fetchData]);
 
-  // Tab-specific filtered data for the table
-  const selectedInvestments = useMemo(() => allInvestments.filter(i => i.user === activeTab), [allInvestments, activeTab]);
-  const selectedDividends = useMemo(() => allDividends.filter(d => d.user === activeTab), [allDividends, activeTab]);
+  const consolidated = useMemo(() => consolidateInvestments(investments, dividends), [investments, dividends]);
 
-  const consolidatedTotal = useMemo(() => consolidateInvestments(allInvestments, allDividends), [allInvestments, allDividends]);
-  const consolidatedTable = useMemo(() => consolidateInvestments(selectedInvestments, selectedDividends), [selectedInvestments, selectedDividends]);
-
-  // GLOBAL Portfolio Stats (Sum of both accounts)
-  const totalInvested = allInvestments.reduce((acc, curr) => acc + (Number(curr.invested) || 0), 0);
-  const currentValue = allInvestments.reduce((acc, curr) => acc + (Number(curr.currentValue) || 0), 0);
-  const totalDivsReceived = allDividends.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+  const totalInvested = investments.reduce((acc, curr) => acc + (Number(curr.invested) || 0), 0);
+  const currentValue = investments.reduce((acc, curr) => acc + (Number(curr.currentValue) || 0), 0);
+  const totalDivsReceived = dividends.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
   const totalProfitLoss = (currentValue - totalInvested) + totalDivsReceived;
   const profitPercentage = totalInvested > 0 ? (totalProfitLoss / totalInvested) * 100 : 0;
 
   const distribution = Object.entries(
-    allInvestments.reduce((acc, curr) => {
-      const type = curr.type || curr.assetType || "Outro";
-      acc[type] = (acc[type] || 0) + (Number(curr.currentValue) || 0);
+    investments.reduce((acc, curr) => {
+      acc[curr.type || curr.assetType] = (acc[curr.type || curr.assetType] || 0) + (Number(curr.currentValue) || 0);
       return acc;
     }, {} as Record<string, number>)
   ).map(([name, value]) => ({ name, value }));
@@ -254,23 +234,20 @@ export default function InvestmentsPage() {
     setIsContribution(false);
   };
 
+  // Sync selectedAsset when fetchData updates state
   React.useEffect(() => {
     if (selectedAsset) {
-      const updated = consolidatedTotal.find(g => g.key === selectedAsset.key);
+      const updated = consolidated.find(g => g.key === selectedAsset.key);
       if (updated) setSelectedAsset(updated);
     }
-  }, [consolidatedTotal]);
+  }, [consolidated]);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex justify-between items-end">
         <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-2 px-3 py-1 bg-slate-900 text-white rounded-full w-fit mb-2">
-            <Users className="w-3 h-3" />
-            <span className="text-[10px] font-bold uppercase tracking-wider">Patrimônio Consolidado</span>
-          </div>
-          <h2 className="text-3xl font-bold tracking-tight text-slate-900">Resumo da Família</h2>
-          <p className="text-slate-500 text-lg">Acompanhe o total de Maria Cecília + Vinícius.</p>
+          <h2 className="text-3xl font-bold tracking-tight text-slate-900">Investimentos</h2>
+          <p className="text-slate-500 text-lg">Acompanhe a evolução do patrimônio de {activeTab === 'maria' ? 'Maria Cecília' : 'Vinícius'}.</p>
         </div>
         <div className="flex gap-3">
           <Button variant="outline" onClick={fetchData} disabled={loading}>
@@ -284,11 +261,10 @@ export default function InvestmentsPage() {
         </div>
       </div>
 
-      {/* GLOBAL Stats Section */}
       <div className="grid gap-6 md:grid-cols-3">
-        <StatsCard title="Investimento Total (Família)" value={totalInvested} icon={Briefcase} />
-        <StatsCard title="Saldo Atual + Proventos" value={currentValue + totalDivsReceived} icon={Activity} subtitle={`Total Recebido: ${formatCurrency(totalDivsReceived)}`} />
-        <ProfitCard title="Rentabilidade Geral" value={totalProfitLoss} percentage={profitPercentage} />
+        <StatsCard title="Total Investido" value={totalInvested} icon={Briefcase} />
+        <StatsCard title="Valor Atual + Proventos" value={currentValue + totalDivsReceived} icon={Activity} subtitle={`Recebido: ${formatCurrency(totalDivsReceived)}`} />
+        <ProfitCard value={totalProfitLoss} percentage={profitPercentage} />
       </div>
 
       <Tabs>
@@ -321,7 +297,7 @@ export default function InvestmentsPage() {
                   />
                 )}
                 <ConsolidatedTable 
-                  consolidated={consolidatedTable}
+                  consolidated={consolidated}
                   loading={loading}
                   onRowClick={(assetGroup: any) => setSelectedAsset(assetGroup)}
                   onNewContribution={(assetGroup: any) => {
@@ -331,8 +307,7 @@ export default function InvestmentsPage() {
                 />
               </div>
               <div className="space-y-6">
-                {/* GLOBAL Allocation - Shows dashboard total context */}
-                <AllocationCard distribution={distribution} COLORS={COLORS} title="Alocação da Família" />
+                <AllocationCard distribution={distribution} COLORS={COLORS} />
                 <SmartAllocationCard distribution={distribution} />
               </div>
             </div>
@@ -342,7 +317,7 @@ export default function InvestmentsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Crescimento do Patrimônio Combinado</CardTitle>
+          <CardTitle>Crescimento do Patrimônio</CardTitle>
         </CardHeader>
         <CardContent className="h-[300px]">
           <ResponsiveContainer width="100%" height="100%">
@@ -403,7 +378,7 @@ export default function InvestmentsPage() {
             </div>
             <AddDividendForm 
               asset={selectedAssetForDiv}
-              userId={activeTab} // Uses current active user for saving
+              userId={activeTab}
               onSave={() => {
                 setShowDivForm(false);
                 fetchData();
@@ -508,13 +483,7 @@ function AssetDetailPanel({ assetGroup, onClose, onNewContribution, onEditEntry,
       <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
       <div className="relative w-full max-w-lg h-full bg-white shadow-2xl overflow-y-auto animate-in slide-in-from-right duration-300" onClick={(e) => e.stopPropagation()}>
         <div className="sticky top-0 bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between z-10">
-          <div>
-            <h3 className="text-xl font-bold text-slate-900">{assetGroup.name}</h3>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-slate-400">{assetGroup.ticker || "N/A"}</span>
-              <span className="text-[10px] px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded uppercase font-bold">{assetGroup.user === 'maria' ? 'CECÍLIA' : 'VINÍCIUS'}</span>
-            </div>
-          </div>
+          <div><h3 className="text-xl font-bold text-slate-900">{assetGroup.name}</h3><p className="text-sm text-slate-400">{assetGroup.ticker || "N/A"}</p></div>
           <Button variant="ghost" className="h-8 w-8 p-0" onClick={onClose}><X className="w-4 h-4" /></Button>
         </div>
 
@@ -742,7 +711,7 @@ function StatsCard({ title, value, icon: Icon, subtitle }: any) {
   );
 }
 
-function ProfitCard({ title, value, percentage }: { title: string, value: number, percentage: number }) {
+function ProfitCard({ value, percentage }: { value: number, percentage: number }) {
   const isPositive = value >= 0;
   return (
     <Card>
@@ -752,7 +721,7 @@ function ProfitCard({ title, value, percentage }: { title: string, value: number
             <TrendingUp className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-sm font-medium text-slate-500">{title}</p>
+            <p className="text-sm font-medium text-slate-500">Lucro/Prejuízo Total (Inc. Prov.)</p>
             <div className="flex items-baseline gap-2">
               <h3 className={cn("text-2xl font-bold", isPositive ? "text-emerald-600" : "text-red-600")}>{formatCurrency(value)}</h3>
               <span className={cn("text-sm font-bold", isPositive ? "text-emerald-500" : "text-red-500")}>{isPositive ? "+" : ""}{percentage.toFixed(2)}%</span>
@@ -764,10 +733,10 @@ function ProfitCard({ title, value, percentage }: { title: string, value: number
   );
 }
 
-function AllocationCard({ distribution, COLORS, title = "Alocação" }: any) {
+function AllocationCard({ distribution, COLORS }: any) {
   return (
     <Card>
-      <CardHeader><CardTitle>{title}</CardTitle></CardHeader>
+      <CardHeader><CardTitle>Alocação</CardTitle></CardHeader>
       <CardContent className="h-[250px]">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
@@ -794,10 +763,10 @@ function SmartAllocationCard({ distribution }: any) {
   return (
     <Card className="bg-slate-900 text-white border-none relative overflow-hidden">
       <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl"></div>
-      <CardHeader><CardTitle className="text-white text-lg">Dica de Gestão Família</CardTitle></CardHeader>
+      <CardHeader><CardTitle className="text-white text-lg">Dica de Gestão</CardTitle></CardHeader>
       <CardContent>
-        <p className="text-slate-400 text-xs leading-relaxed">Sua maior alocação familiar está em <span className="text-white font-bold">{distribution[0]?.name || "N/A"}</span>. Considere diversificar entre as contas para otimização fiscal e redução de risco.</p>
-        <Button className="w-full mt-4 bg-white text-slate-900 border-none h-9 text-xs">Análise Detalhada</Button>
+        <p className="text-slate-400 text-xs leading-relaxed">Sua maior alocação está em <span className="text-white font-bold">{distribution[0]?.name || "N/A"}</span>. Considere rebalancear sua carteira para reduzir riscos.</p>
+        <Button className="w-full mt-4 bg-white text-slate-900 border-none h-9 text-xs">Gerar Relatório</Button>
       </CardContent>
     </Card>
   );
