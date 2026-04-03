@@ -494,20 +494,30 @@ function AddInvestmentForm({
   }, [editingInvestment, isContribution]);
 
   const handleSubmit = async () => {
-    if (!formData.name || !formData.invested) {
-      alert("Por favor, preencha o nome do ativo e o valor investido.");
+    const qty = Number(formData.quantity) || 0;
+    const pPrice = Number(formData.purchasePrice) || 0;
+    const manualInvested = Number(formData.invested) || 0;
+
+    // Calcula o valor final: ou o manual, ou o auto-calculado
+    const investedVal = manualInvested || (qty * pPrice);
+    const purchasePriceVal = pPrice || (manualInvested / (qty || 1));
+
+    if (!formData.name) {
+      alert("Por favor, preencha o nome do ativo.");
+      return;
+    }
+
+    if (!investedVal || investedVal <= 0) {
+      alert("Por favor, preencha o valor investido ou a quantidade e o preço médio.");
       return;
     }
 
     setLoading(true);
     try {
-      const purchasePriceVal = Number(formData.purchasePrice) || (Number(formData.invested) / Number(formData.quantity || 1));
-      const investedVal = Number(formData.invested) || (Number(formData.quantity) * Number(formData.purchasePrice));
-      
       const payload = {
         ...formData,
         ticker: formData.ticker.toUpperCase().trim(),
-        quantity: Number(formData.quantity) || 1,
+        quantity: qty || 1,
         purchasePrice: purchasePriceVal,
         invested: investedVal,
         currentValue: Number(formData.currentValue || investedVal)
