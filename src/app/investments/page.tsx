@@ -300,9 +300,9 @@ export default function InvestmentsPage() {
                 <ConsolidatedTable 
                   consolidated={consolidated}
                   loading={loading}
-                  onRowClick={(group) => setSelectedAsset(group)}
-                  onNewContribution={(group) => {
-                    openForm(group.entries[0], true);
+                  onRowClick={(assetGroup: any) => setSelectedAsset(assetGroup)}
+                  onNewContribution={(assetGroup: any) => {
+                    openForm(assetGroup.entries[0], true);
                     setSelectedAsset(null);
                   }}
                 />
@@ -342,11 +342,11 @@ export default function InvestmentsPage() {
             openForm(selectedAsset.entries[0], true);
             setSelectedAsset(null);
           }}
-          onEditEntry={(entry) => {
+          onEditEntry={(entry: any) => {
             openForm(entry, false);
             setSelectedAsset(null);
           }}
-          onDeleteEntry={async (id) => {
+          onDeleteEntry={async (id: string) => {
             if (confirm("Excluir esta entrada do histórico?")) {
               await deleteInvestment(id);
               fetchData();
@@ -357,7 +357,7 @@ export default function InvestmentsPage() {
             setSelectedAssetForDiv(selectedAsset);
             setShowDivForm(true);
           }}
-          onDeleteDividend={async (id) => {
+          onDeleteDividend={async (id: string) => {
             if (confirm("Excluir este provento?")) {
               await deleteDividend(id);
               fetchData();
@@ -430,36 +430,36 @@ function ConsolidatedTable({ consolidated, loading, onRowClick, onNewContributio
             </TableRow>
           </TableHeader>
           <TableBody>
-            {consolidated.map((group: any) => (
-              <TableRow key={group.key} className="cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => onRowClick(group)}>
+            {consolidated.map((assetGroup: any) => (
+              <TableRow key={assetGroup.key} className="cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => onRowClick(assetGroup)}>
                 <TableCell>
                   <div className="flex flex-col">
-                    <span className="font-semibold text-slate-900">{group.name}</span>
-                    <span className="text-xs text-slate-400">{group.ticker || "N/A"}</span>
+                    <span className="font-semibold text-slate-900">{assetGroup.name}</span>
+                    <span className="text-xs text-slate-400">{assetGroup.ticker || "N/A"}</span>
                   </div>
                 </TableCell>
-                <TableCell><span className="text-sm text-slate-600">{group.assetType}</span></TableCell>
+                <TableCell><span className="text-sm text-slate-600">{assetGroup.assetType}</span></TableCell>
                 <TableCell className="text-right">
                   <div className="flex flex-col items-end">
-                    <span className="font-medium">{group.totalQuantity.toLocaleString('pt-BR')}</span>
-                    <span className="text-[10px] text-slate-400">PM {formatCurrency(group.avgPurchasePrice)}</span>
+                    <span className="font-medium">{assetGroup.totalQuantity.toLocaleString('pt-BR')}</span>
+                    <span className="text-[10px] text-slate-400">PM {formatCurrency(assetGroup.avgPurchasePrice)}</span>
                   </div>
                 </TableCell>
-                <TableCell className="text-right text-slate-700">{formatCurrency(group.totalInvested)}</TableCell>
+                <TableCell className="text-right text-slate-700">{formatCurrency(assetGroup.totalInvested)}</TableCell>
                 <TableCell className="text-right font-bold">
                   <div className="flex flex-col items-end">
-                    <span>{formatCurrency(group.totalCurrentValue)}</span>
-                    {group.totalDividends > 0 && <span className="text-[9px] text-emerald-600">+{formatCurrency(group.totalDividends)} prov.</span>}
+                    <span>{formatCurrency(assetGroup.totalCurrentValue)}</span>
+                    {assetGroup.totalDividends > 0 && <span className="text-[9px] text-emerald-600">+{formatCurrency(assetGroup.totalDividends)} prov.</span>}
                   </div>
                 </TableCell>
-                <TableCell className={cn("text-right font-medium", group.totalReturn >= 0 ? "text-emerald-500" : "text-red-500")}>
+                <TableCell className={cn("text-right font-medium", assetGroup.totalReturn >= 0 ? "text-emerald-500" : "text-red-500")}>
                   <div className="flex flex-col items-end">
-                    <span>{group.totalReturn >= 0 ? "+" : ""}{formatCurrency(group.totalReturn)}</span>
-                    <span className="text-[10px] opacity-80">{group.gpPct.toFixed(1)}%</span>
+                    <span>{assetGroup.totalReturn >= 0 ? "+" : ""}{formatCurrency(assetGroup.totalReturn)}</span>
+                    <span className="text-[10px] opacity-80">{assetGroup.gpPct.toFixed(1)}%</span>
                   </div>
                 </TableCell>
                 <TableCell className="px-1" onClick={(e) => e.stopPropagation()}>
-                  <Button variant="ghost" className="h-8 w-8 p-0" onClick={() => setOpenMenuKey(openMenuKey === group.key ? null : group.key)}>
+                  <Button variant="ghost" className="h-8 w-8 p-0" onClick={() => setOpenMenuKey(openMenuKey === assetGroup.key ? null : assetGroup.key)}>
                     <MoreVertical className="w-4 h-4" />
                   </Button>
                 </TableCell>
@@ -475,8 +475,8 @@ function ConsolidatedTable({ consolidated, loading, onRowClick, onNewContributio
 // ──────────────────────────────────────
 // Asset Detail Panel
 // ──────────────────────────────────────
-function AssetDetailPanel({ group, onClose, onNewContribution, onEditEntry, onDeleteEntry, onAddDividend, onDeleteDividend }: any) {
-  const gpTotal = group.totalReturn;
+function AssetDetailPanel({ assetGroup, onClose, onNewContribution, onEditEntry, onDeleteEntry, onAddDividend, onDeleteDividend }: any) {
+  const gpTotal = assetGroup.totalReturn;
   const isPositive = gpTotal >= 0;
 
   return (
@@ -484,20 +484,20 @@ function AssetDetailPanel({ group, onClose, onNewContribution, onEditEntry, onDe
       <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
       <div className="relative w-full max-w-lg h-full bg-white shadow-2xl overflow-y-auto animate-in slide-in-from-right duration-300" onClick={(e) => e.stopPropagation()}>
         <div className="sticky top-0 bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between z-10">
-          <div><h3 className="text-xl font-bold text-slate-900">{group.name}</h3><p className="text-sm text-slate-400">{group.ticker || "N/A"}</p></div>
+          <div><h3 className="text-xl font-bold text-slate-900">{assetGroup.name}</h3><p className="text-sm text-slate-400">{assetGroup.ticker || "N/A"}</p></div>
           <Button variant="ghost" className="h-8 w-8 p-0" onClick={onClose}><X className="w-4 h-4" /></Button>
         </div>
 
         <div className="p-6 space-y-8">
           {/* Main Stats */}
           <div className="grid grid-cols-2 gap-3">
-            <DetailStat label="Total Investido" value={formatCurrency(group.totalInvested)} />
-            <DetailStat label="Valor de Mercado" value={formatCurrency(group.totalCurrentValue)} />
-            <DetailStat label="Dividendos Totais" value={formatCurrency(group.totalDividends)} color="text-emerald-600" />
+            <DetailStat label="Total Investido" value={formatCurrency(assetGroup.totalInvested)} />
+            <DetailStat label="Valor de Mercado" value={formatCurrency(assetGroup.totalCurrentValue)} />
+            <DetailStat label="Dividendos Totais" value={formatCurrency(assetGroup.totalDividends)} color="text-emerald-600" />
             <DetailStat 
               label="Resultado Total" 
               value={`${isPositive ? "+" : ""}${formatCurrency(gpTotal)}`} 
-              subtitle={`${group.gpPct.toFixed(2)}%`}
+              subtitle={`${assetGroup.gpPct.toFixed(2)}%`}
               color={isPositive ? "text-emerald-600" : "text-red-600"}
               bg={isPositive ? "bg-emerald-50" : "bg-red-50"}
             />
@@ -510,7 +510,10 @@ function AssetDetailPanel({ group, onClose, onNewContribution, onEditEntry, onDe
               <Button size="sm" variant="outline" className="h-7 text-xs" onClick={onNewContribution}><Plus className="w-3 h-3 mr-1" /> Aporte</Button>
             </div>
             <div className="space-y-2">
-              {group.entries.sort((a:any, b:any) => b.date.localeCompare(a.date)).map((entry: any) => (
+              {assetGroup.entries
+                .slice()
+                .sort((a: any, b: any) => (b.date || "").localeCompare(a.date || ""))
+                .map((entry: any) => (
                 <div key={entry.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl group/item">
                   <div>
                     <p className="text-xs font-semibold text-slate-800">{formatDate(entry.date)}</p>
@@ -536,9 +539,12 @@ function AssetDetailPanel({ group, onClose, onNewContribution, onEditEntry, onDe
                 <Plus className="w-3 h-3 mr-1" /> Provento
               </Button>
             </div>
-            {group.dividendEntries.length > 0 ? (
+            {assetGroup.dividendEntries.length > 0 ? (
               <div className="space-y-2">
-                {group.dividendEntries.sort((a:any, b:any) => b.date.localeCompare(a.date)).map((div: any) => (
+                {assetGroup.dividendEntries
+                  .slice()
+                  .sort((a: any, b: any) => (b.date || "").localeCompare(a.date || ""))
+                  .map((div: any) => (
                   <div key={div.id} className="flex items-center justify-between p-3 bg-emerald-50/50 border border-emerald-100 rounded-xl group/div">
                     <div>
                       <p className="text-xs font-semibold text-emerald-800">{formatDate(div.date)}</p>
