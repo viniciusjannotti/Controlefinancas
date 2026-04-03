@@ -176,3 +176,26 @@ export const getReminders = async () => {
 export const deleteReminder = async (id: string) => {
   await deleteDoc(doc(db, "reminders", id));
 };
+// Dividends / Proventos
+export const addDividend = async (userId: string, data: any) => {
+  return await addDoc(collection(db, "dividends"), {
+    ...data,
+    userId,
+    createdAt: Timestamp.now(),
+  });
+};
+
+export const getDividends = async (userId: string) => {
+  const q = query(
+    collection(db, "dividends"), 
+    where("userId", "==", userId),
+    orderBy("date", "desc")
+  );
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+};
+
+export const deleteDividend = async (id: string) => {
+  const docRef = doc(db, "dividends", id);
+  await deleteDoc(docRef);
+};

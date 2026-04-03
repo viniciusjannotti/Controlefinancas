@@ -14,7 +14,8 @@ import {
   Trash2,
   Edit3,
   MoreVertical,
-  Gift
+  Gift,
+  DollarSign
 } from "lucide-react";
 import { 
   LineChart,
@@ -43,10 +44,20 @@ import {
 } from "@/components/ui/Tabs";
 import { Button, Input, Label, Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/index";
 import { formatCurrency, formatDate, cn } from "@/lib/utils";
-import { addInvestment, getInvestments, updateInvestment, updateInvestmentValue, deleteInvestment } from "@/lib/firebase/db";
+import { 
+  addInvestment, 
+  getInvestments, 
+  updateInvestment, 
+  updateInvestmentValue, 
+  deleteInvestment,
+  addDividend,
+  getDividends,
+  deleteDividend
+} from "@/lib/firebase/db";
 import { fetchStockPrices } from "@/lib/stockApi";
 
 const assetTypes = ["Ações", "ETFs", "Renda Fixa", "Crypto", "Outro"];
+const dividendTypes = ["Dividendo", "JCP", "Rendimento", "Outro"];
 
 const growthData = [
   { month: "Jan", total: 15000 },
@@ -60,11 +71,10 @@ const growthData = [
 // ──────────────────────────────────────
 // Consolidation logic
 // ──────────────────────────────────────
-function consolidateInvestments(investments: any[]) {
+function consolidateInvestments(investments: any[], dividends: any[]) {
   const groups: Record<string, any> = {};
 
   for (const inv of investments) {
-    // Group key: ticker (uppercase) or name if no ticker
     const key = inv.ticker ? inv.ticker.toUpperCase().trim() : inv.name;
     if (!groups[key]) {
       groups[key] = {
@@ -77,6 +87,8 @@ function consolidateInvestments(investments: any[]) {
         totalQuantity: 0,
         totalCurrentValue: 0,
         entries: [],
+        totalDividends: 0,
+        dividendEntries: [],
       };
     }
     const group = groups[key];
@@ -86,12 +98,26 @@ function consolidateInvestments(investments: any[]) {
     group.entries.push(inv);
   }
 
-  return Object.values(groups).map((g) => ({
-    ...g,
-    avgPurchasePrice: g.totalQuantity > 0 ? g.totalInvested / g.totalQuantity : 0,
-    gp: g.totalCurrentValue - g.totalInvested,
-    gpPct: g.totalInvested > 0 ? ((g.totalCurrentValue - g.totalInvested) / g.totalInvested) * 100 : 0,
-  }));
+  // Add dividends to groups
+  for (const div of dividends) {
+    const key = div.ticker ? div.ticker.toUpperCase().trim() : div.name;
+    if (groups[key]) {
+      groups[key].totalDividends += Number(div.amount) || 0;
+      groups[key].dividendEntries.push(div);
+    }
+  }
+
+  return Object.values(groups).map((g) => {
+    const gpValorization = g.totalCurrentValue - g.totalInvested;
+    const totalReturn = gpValorization + g.totalDividends;
+    return {
+      ...g,
+      avgPurchasePrice: g.totalQuantity > 0 ? g.totalInvested / g.totalQuantity : 0,
+      gp: gpValorization,
+      totalReturn,
+      gpPct: g.totalInvested > 0 ? (totalReturn / g.totalInvested) * 100 : 0,
+    };
+  });
 }
 
 // ──────────────────────────────────────
@@ -100,19 +126,26 @@ function consolidateInvestments(investments: any[]) {
 export default function InvestmentsPage() {
   const [activeTab, setActiveTab] = useState("maria");
   const [investments, setInvestments] = useState<any[]>([]);
+  const [dividends, setDividends] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [showDivForm, setShowDivForm] = useState(false);
   const [editingInvestment, setEditingInvestment] = useState<any | null>(null);
+  const [selectedAssetForDiv, setSelectedAssetForDiv] = useState<any | null>(null);
   const [isContribution, setIsContribution] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<any | null>(null);
 
-  const fetchInvestments = React.useCallback(async () => {
+  const fetchData = React.useCallback(async () => {
     setLoading(true);
     try {
-      const data = await getInvestments(activeTab);
-      setInvestments(data);
+      const [invData, divData] = await Promise.all([
+        getInvestments(activeTab),
+        getDividends(activeTab)
+      ]);
+      setInvestments(invData);
+      setDividends(divData);
     } catch (error) {
-      console.error("Erro ao buscar investimentos:", error);
+      console.error("Erro ao buscar dados:", error);
     } finally {
       setLoading(false);
     }
@@ -148,7 +181,7 @@ export default function InvestmentsPage() {
         }
       }
 
-      await fetchInvestments();
+      await fetchData();
 
       if (updatedCount === 0 && tickers.length > 0) {
         alert(`❌ Nenhum dos ativos foi atualizado.\n\nTentamos buscar: ${[...new Set(tickers)].join(', ')}\n\nVerifique os tickers e se o Token está configurado no Vercel.`);
@@ -169,15 +202,16 @@ export default function InvestmentsPage() {
   };
 
   React.useEffect(() => {
-    fetchInvestments();
-  }, [fetchInvestments]);
+    fetchData();
+  }, [fetchData]);
 
-  const consolidated = useMemo(() => consolidateInvestments(investments), [investments]);
+  const consolidated = useMemo(() => consolidateInvestments(investments, dividends), [investments, dividends]);
 
   const totalInvested = investments.reduce((acc, curr) => acc + (Number(curr.invested) || 0), 0);
   const currentValue = investments.reduce((acc, curr) => acc + (Number(curr.currentValue) || 0), 0);
-  const profitLoss = currentValue - totalInvested;
-  const profitPercentage = totalInvested > 0 ? (profitLoss / totalInvested) * 100 : 0;
+  const totalDivsReceived = dividends.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+  const totalProfitLoss = (currentValue - totalInvested) + totalDivsReceived;
+  const profitPercentage = totalInvested > 0 ? (totalProfitLoss / totalInvested) * 100 : 0;
 
   const distribution = Object.entries(
     investments.reduce((acc, curr) => {
@@ -201,6 +235,14 @@ export default function InvestmentsPage() {
     setIsContribution(false);
   };
 
+  // Sync selectedAsset when fetchData updates state (to keep detail panel current)
+  React.useEffect(() => {
+    if (selectedAsset) {
+      const updated = consolidated.find(g => g.key === selectedAsset.key);
+      if (updated) setSelectedAsset(updated);
+    }
+  }, [consolidated]);
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex justify-between items-end">
@@ -209,7 +251,7 @@ export default function InvestmentsPage() {
           <p className="text-slate-500 text-lg">Acompanhe a evolução do patrimônio.</p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline" onClick={fetchInvestments} disabled={loading}>
+          <Button variant="outline" onClick={fetchData} disabled={loading}>
             <RefreshCw className={cn("w-4 h-4 mr-2", loading && "animate-spin")} />
             Sincronizar
           </Button>
@@ -222,8 +264,8 @@ export default function InvestmentsPage() {
 
       <div className="grid gap-6 md:grid-cols-3">
         <StatsCard title="Total Investido" value={totalInvested} icon={Briefcase} />
-        <StatsCard title="Valor Atual" value={currentValue} icon={Activity} />
-        <ProfitCard value={profitLoss} percentage={profitPercentage} />
+        <StatsCard title="Valor Atual + Proventos" value={currentValue + totalDivsReceived} icon={Activity} subtitle={`Recebido: ${formatCurrency(totalDivsReceived)}`} />
+        <ProfitCard value={totalProfitLoss} percentage={profitPercentage} />
       </div>
 
       <Tabs>
@@ -249,7 +291,7 @@ export default function InvestmentsPage() {
                 {showForm && (
                   <AddInvestmentForm 
                     type={tab as "maria" | "vinicius"} 
-                    onSave={() => { closeForm(); fetchInvestments(); }}
+                    onSave={() => { closeForm(); fetchData(); }}
                     onCancel={closeForm}
                     editingInvestment={editingInvestment}
                     isContribution={isContribution}
@@ -260,7 +302,6 @@ export default function InvestmentsPage() {
                   loading={loading}
                   onRowClick={(group) => setSelectedAsset(group)}
                   onNewContribution={(group) => {
-                    // Use the first entry as a template for the new contribution
                     openForm(group.entries[0], true);
                     setSelectedAsset(null);
                   }}
@@ -308,11 +349,45 @@ export default function InvestmentsPage() {
           onDeleteEntry={async (id) => {
             if (confirm("Excluir esta entrada do histórico?")) {
               await deleteInvestment(id);
-              fetchInvestments();
+              fetchData();
               setSelectedAsset(null);
             }
           }}
+          onAddDividend={() => {
+            setSelectedAssetForDiv(selectedAsset);
+            setShowDivForm(true);
+          }}
+          onDeleteDividend={async (id) => {
+            if (confirm("Excluir este provento?")) {
+              await deleteDividend(id);
+              fetchData();
+            }
+          }}
         />
+      )}
+
+      {/* Dividend Form Overlay */}
+      {showDivForm && selectedAssetForDiv && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setShowDivForm(false)} />
+          <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl p-6 overflow-hidden animate-in zoom-in duration-200">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-slate-900">Novo Provento — {selectedAssetForDiv.name}</h3>
+              <Button variant="ghost" className="h-8 w-8 p-0" onClick={() => setShowDivForm(false)}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+            <AddDividendForm 
+              asset={selectedAssetForDiv}
+              userId={activeTab}
+              onSave={() => {
+                setShowDivForm(false);
+                fetchData();
+              }}
+              onCancel={() => setShowDivForm(false)}
+            />
+          </div>
+        </div>
       )}
     </div>
   );
@@ -321,12 +396,7 @@ export default function InvestmentsPage() {
 // ──────────────────────────────────────
 // Consolidated Table
 // ──────────────────────────────────────
-function ConsolidatedTable({ consolidated, loading, onRowClick, onNewContribution }: {
-  consolidated: any[],
-  loading: boolean,
-  onRowClick: (group: any) => void,
-  onNewContribution: (group: any) => void,
-}) {
+function ConsolidatedTable({ consolidated, loading, onRowClick, onNewContribution }: any) {
   const [openMenuKey, setOpenMenuKey] = useState<string | null>(null);
 
   if (loading) {
@@ -344,11 +414,7 @@ function ConsolidatedTable({ consolidated, loading, onRowClick, onNewContributio
     <Card>
       <CardHeader>
         <CardTitle>Meus Ativos</CardTitle>
-        <CardDescription>
-          {consolidated.length > 0 
-            ? `${consolidated.length} ativo${consolidated.length > 1 ? 's' : ''} na carteira. Clique para ver o histórico.`
-            : "Nenhum ativo cadastrado ainda."}
-        </CardDescription>
+        <CardDescription>Portfólio consolidado. Clique para ver detalhes e proventos.</CardDescription>
       </CardHeader>
       <CardContent>
         <Table>
@@ -356,87 +422,49 @@ function ConsolidatedTable({ consolidated, loading, onRowClick, onNewContributio
             <TableRow>
               <TableHead>Ativo</TableHead>
               <TableHead>Tipo</TableHead>
-              <TableHead className="text-right">Quantidade</TableHead>
+              <TableHead className="text-right">Qtd</TableHead>
               <TableHead className="text-right">Investido</TableHead>
               <TableHead className="text-right">Atual</TableHead>
-              <TableHead className="text-right">G/P</TableHead>
+              <TableHead className="text-right">G/P Total</TableHead>
               <TableHead className="w-10"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {consolidated.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-12 text-slate-400">
-                  <Briefcase className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                  Adicione seu primeiro investimento clicando em "Novo Ativo".
+            {consolidated.map((group: any) => (
+              <TableRow key={group.key} className="cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => onRowClick(group)}>
+                <TableCell>
+                  <div className="flex flex-col">
+                    <span className="font-semibold text-slate-900">{group.name}</span>
+                    <span className="text-xs text-slate-400">{group.ticker || "N/A"}</span>
+                  </div>
+                </TableCell>
+                <TableCell><span className="text-sm text-slate-600">{group.assetType}</span></TableCell>
+                <TableCell className="text-right">
+                  <div className="flex flex-col items-end">
+                    <span className="font-medium">{group.totalQuantity.toLocaleString('pt-BR')}</span>
+                    <span className="text-[10px] text-slate-400">PM {formatCurrency(group.avgPurchasePrice)}</span>
+                  </div>
+                </TableCell>
+                <TableCell className="text-right text-slate-700">{formatCurrency(group.totalInvested)}</TableCell>
+                <TableCell className="text-right font-bold">
+                  <div className="flex flex-col items-end">
+                    <span>{formatCurrency(group.totalCurrentValue)}</span>
+                    {group.totalDividends > 0 && <span className="text-[9px] text-emerald-600">+{formatCurrency(group.totalDividends)} prov.</span>}
+                  </div>
+                </TableCell>
+                <TableCell className={cn("text-right font-medium", group.totalReturn >= 0 ? "text-emerald-500" : "text-red-500")}>
+                  <div className="flex flex-col items-end">
+                    <span>{group.totalReturn >= 0 ? "+" : ""}{formatCurrency(group.totalReturn)}</span>
+                    <span className="text-[10px] opacity-80">{group.gpPct.toFixed(1)}%</span>
+                  </div>
+                </TableCell>
+                <TableCell className="px-1" onClick={(e) => e.stopPropagation()}>
+                  <Button variant="ghost" className="h-8 w-8 p-0" onClick={() => setOpenMenuKey(openMenuKey === group.key ? null : group.key)}>
+                    <MoreVertical className="w-4 h-4" />
+                  </Button>
                 </TableCell>
               </TableRow>
-            ) : (
-              consolidated.map((group) => (
-                <TableRow 
-                  key={group.key}
-                  className="cursor-pointer hover:bg-slate-50 transition-colors"
-                  onClick={() => onRowClick(group)}
-                >
-                  <TableCell>
-                    <div className="flex flex-col">
-                      <span className="font-semibold text-slate-900">{group.name}</span>
-                      {group.ticker && <span className="text-xs text-slate-400">{group.ticker}</span>}
-                      {group.entries.length > 1 && (
-                        <span className="text-[10px] text-primary font-medium">{group.entries.length} aportes</span>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-sm text-slate-600">{group.assetType}</span>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex flex-col items-end">
-                      <span className="font-medium">{group.totalQuantity.toLocaleString('pt-BR')}</span>
-                      <span className="text-[10px] text-slate-400">PM {formatCurrency(group.avgPurchasePrice)}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right text-slate-700">{formatCurrency(group.totalInvested)}</TableCell>
-                  <TableCell className="text-right font-bold">{formatCurrency(group.totalCurrentValue)}</TableCell>
-                  <TableCell className={cn(
-                    "text-right font-medium",
-                    group.gp >= 0 ? "text-emerald-500" : "text-red-500"
-                  )}>
-                    <div className="flex flex-col items-end">
-                      <span>{group.gp >= 0 ? "+" : ""}{formatCurrency(group.gp)}</span>
-                      <span className="text-[10px] opacity-80">{group.gpPct.toFixed(1)}%</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="relative px-1" onClick={(e) => e.stopPropagation()}>
-                    <Button 
-                      variant="ghost" 
-                      className="h-8 w-8 p-0"
-                      onClick={() => setOpenMenuKey(openMenuKey === group.key ? null : group.key)}
-                    >
-                      <MoreVertical className="w-4 h-4" />
-                    </Button>
-                    {openMenuKey === group.key && (
-                      <div className="absolute right-0 top-full mt-1 z-50 w-44 bg-white rounded-xl shadow-xl border border-slate-200 py-1 overflow-hidden">
-                        <button 
-                          className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-                          onClick={() => { onNewContribution(group); setOpenMenuKey(null); }}
-                        >
-                          <PlusCircle className="w-4 h-4 text-primary" />
-                          Novo Aporte
-                        </button>
-                        <button 
-                          className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-                          onClick={() => { onRowClick(group); setOpenMenuKey(null); }}
-                        >
-                          <History className="w-4 h-4" />
-                          Ver Histórico
-                        </button>
-                      </div>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
+            ))}
           </TableBody>
         </Table>
       </CardContent>
@@ -445,298 +473,226 @@ function ConsolidatedTable({ consolidated, loading, onRowClick, onNewContributio
 }
 
 // ──────────────────────────────────────
-// Asset Detail Panel (Modal/Drawer)
+// Asset Detail Panel
 // ──────────────────────────────────────
-function AssetDetailPanel({ group, onClose, onNewContribution, onEditEntry, onDeleteEntry }: {
-  group: any,
-  onClose: () => void,
-  onNewContribution: () => void,
-  onEditEntry: (entry: any) => void,
-  onDeleteEntry: (id: string) => void,
-}) {
-  const gp = group.gp;
-  const isPositive = gp >= 0;
+function AssetDetailPanel({ group, onClose, onNewContribution, onEditEntry, onDeleteEntry, onAddDividend, onDeleteDividend }: any) {
+  const gpTotal = group.totalReturn;
+  const isPositive = gpTotal >= 0;
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end" onClick={onClose}>
       <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
-      <div 
-        className="relative w-full max-w-lg h-full bg-white shadow-2xl overflow-y-auto animate-in slide-in-from-right duration-300"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
+      <div className="relative w-full max-w-lg h-full bg-white shadow-2xl overflow-y-auto animate-in slide-in-from-right duration-300" onClick={(e) => e.stopPropagation()}>
         <div className="sticky top-0 bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between z-10">
-          <div>
-            <h3 className="text-xl font-bold text-slate-900">{group.name}</h3>
-            {group.ticker && <p className="text-sm text-slate-400">{group.ticker} · {group.assetType}</p>}
-          </div>
-          <Button variant="ghost" className="h-8 w-8 p-0" onClick={onClose}>
-            <X className="w-4 h-4" />
-          </Button>
+          <div><h3 className="text-xl font-bold text-slate-900">{group.name}</h3><p className="text-sm text-slate-400">{group.ticker || "N/A"}</p></div>
+          <Button variant="ghost" className="h-8 w-8 p-0" onClick={onClose}><X className="w-4 h-4" /></Button>
         </div>
 
-        {/* Summary Cards */}
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-8">
+          {/* Main Stats */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-slate-50 rounded-xl p-4">
-              <p className="text-xs text-slate-500 mb-1">Total Investido</p>
-              <p className="text-lg font-bold text-slate-900">{formatCurrency(group.totalInvested)}</p>
-            </div>
-            <div className="bg-slate-50 rounded-xl p-4">
-              <p className="text-xs text-slate-500 mb-1">Valor Atual</p>
-              <p className="text-lg font-bold text-slate-900">{formatCurrency(group.totalCurrentValue)}</p>
-            </div>
-            <div className="bg-slate-50 rounded-xl p-4">
-              <p className="text-xs text-slate-500 mb-1">Qtd. Total</p>
-              <p className="text-lg font-bold text-slate-900">{group.totalQuantity.toLocaleString('pt-BR')}</p>
-              <p className="text-[10px] text-slate-400">PM: {formatCurrency(group.avgPurchasePrice)}</p>
-            </div>
-            <div className={cn(
-              "rounded-xl p-4",
-              isPositive ? "bg-emerald-50" : "bg-red-50"
-            )}>
-              <p className="text-xs text-slate-500 mb-1">Ganho/Prejuízo</p>
-              <p className={cn("text-lg font-bold", isPositive ? "text-emerald-600" : "text-red-600")}>
-                {isPositive ? "+" : ""}{formatCurrency(gp)}
-              </p>
-              <p className={cn("text-xs font-medium", isPositive ? "text-emerald-500" : "text-red-500")}>
-                {group.gpPct.toFixed(2)}%
-              </p>
-            </div>
+            <DetailStat label="Total Investido" value={formatCurrency(group.totalInvested)} />
+            <DetailStat label="Valor de Mercado" value={formatCurrency(group.totalCurrentValue)} />
+            <DetailStat label="Dividendos Totais" value={formatCurrency(group.totalDividends)} color="text-emerald-600" />
+            <DetailStat 
+              label="Resultado Total" 
+              value={`${isPositive ? "+" : ""}${formatCurrency(gpTotal)}`} 
+              subtitle={`${group.gpPct.toFixed(2)}%`}
+              color={isPositive ? "text-emerald-600" : "text-red-600"}
+              bg={isPositive ? "bg-emerald-50" : "bg-red-50"}
+            />
           </div>
 
-          {/* Purchase History */}
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <History className="w-4 h-4 text-slate-400" />
-              <h4 className="font-semibold text-slate-700">Histórico de Aportes</h4>
+          {/* Contribution History */}
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2 text-slate-700 font-semibold"><History className="w-4 h-4" /> Histórico de Aportes</div>
+              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={onNewContribution}><Plus className="w-3 h-3 mr-1" /> Aporte</Button>
             </div>
             <div className="space-y-2">
-              {group.entries
-                .slice()
-                .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                .map((entry: any) => (
-                  <div key={entry.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl group/entry">
-                    <div className="flex flex-col">
-                      <span className="text-sm font-medium text-slate-800">
-                        {entry.date ? new Date(`${entry.date}T00:00:00`).toLocaleDateString('pt-BR') : '—'}
-                      </span>
-                      <span className="text-xs text-slate-400">
-                        {Number(entry.quantity || 0).toLocaleString('pt-BR')} un. · {formatCurrency(entry.purchasePrice || (entry.invested / (entry.quantity || 1)))} cada
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="font-semibold text-slate-800">{formatCurrency(entry.invested)}</span>
-                      <div className="hidden group-hover/entry:flex items-center gap-1">
-                        <Button 
-                          variant="ghost" 
-                          className="h-7 w-7 p-0"
-                          onClick={() => onEditEntry(entry)}
-                        >
-                          <Edit3 className="w-3 h-3" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          className="h-7 w-7 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                          onClick={() => onDeleteEntry(entry.id)}
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </div>
+              {group.entries.sort((a:any, b:any) => b.date.localeCompare(a.date)).map((entry: any) => (
+                <div key={entry.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl group/item">
+                  <div>
+                    <p className="text-xs font-semibold text-slate-800">{formatDate(entry.date)}</p>
+                    <p className="text-[10px] text-slate-400">{entry.quantity} un. @ {formatCurrency(entry.purchasePrice)}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-bold text-slate-700">{formatCurrency(entry.invested)}</span>
+                    <div className="hidden group-hover/item:flex items-center gap-1">
+                      <Button variant="ghost" className="h-7 w-7 p-0" onClick={() => onEditEntry(entry)}><Edit3 className="w-3 h-3" /></Button>
+                      <Button variant="ghost" className="h-7 w-7 p-0 text-red-500 hover:bg-red-50" onClick={() => onDeleteEntry(entry.id)}><Trash2 className="w-3 h-3" /></Button>
                     </div>
                   </div>
+                </div>
               ))}
             </div>
-          </div>
+          </section>
 
-          {/* Dividends Section (placeholder) */}
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <Gift className="w-4 h-4 text-slate-400" />
-              <h4 className="font-semibold text-slate-700">Proventos</h4>
+          {/* Dividends List */}
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2 text-slate-700 font-semibold"><Gift className="w-4 h-4" /> Proventos Recebidos</div>
+              <Button size="sm" variant="outline" className="h-7 text-xs border-emerald-200 text-emerald-600 hover:bg-emerald-50" onClick={onAddDividend}>
+                <Plus className="w-3 h-3 mr-1" /> Provento
+              </Button>
             </div>
-            <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center text-slate-400">
-              <Gift className="w-6 h-6 mx-auto mb-2 opacity-40" />
-              <p className="text-sm">Registre dividendos e JCP aqui em breve.</p>
-            </div>
-          </div>
-
-          {/* Actions */}
-          <Button className="w-full" onClick={onNewContribution}>
-            <PlusCircle className="w-4 h-4 mr-2" />
-            Novo Aporte em {group.name}
-          </Button>
+            {group.dividendEntries.length > 0 ? (
+              <div className="space-y-2">
+                {group.dividendEntries.sort((a:any, b:any) => b.date.localeCompare(a.date)).map((div: any) => (
+                  <div key={div.id} className="flex items-center justify-between p-3 bg-emerald-50/50 border border-emerald-100 rounded-xl group/div">
+                    <div>
+                      <p className="text-xs font-semibold text-emerald-800">{formatDate(div.date)}</p>
+                      <p className="text-[10px] text-emerald-600/70">{div.type}</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-bold text-emerald-600">{formatCurrency(div.amount)}</span>
+                      <Button variant="ghost" className="h-7 w-7 p-0 text-emerald-600 opacity-0 group-hover/div:opacity-100 hover:bg-emerald-100" onClick={() => onDeleteDividend(div.id)}>
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-6 border-2 border-dashed border-slate-100 rounded-xl text-slate-300 text-xs">
+                Nenhum provento registrado.
+              </div>
+            )}
+          </section>
         </div>
       </div>
     </div>
   );
 }
 
-// ──────────────────────────────────────
-// Add/Edit Form
-// ──────────────────────────────────────
-function AddInvestmentForm({ 
-  type, 
-  onSave,
-  onCancel,
-  editingInvestment,
-  isContribution
-}: { 
-  type: "maria" | "vinicius", 
-  onSave: () => void,
-  onCancel: () => void,
-  editingInvestment?: any | null,
-  isContribution?: boolean
-}) {
-  const [loading, setLoading] = useState(false);
-  const defaultForm = {
-    name: "", ticker: "", assetType: "Ações", broker: "",
-    quantity: "", purchasePrice: "", invested: "", currentValue: "",
-    date: new Date().toISOString().split('T')[0]
-  };
-  const [formData, setFormData] = useState(defaultForm);
+function DetailStat({ label, value, subtitle, color = "text-slate-900", bg = "bg-slate-50" }: any) {
+  return (
+    <div className={cn("p-4 rounded-xl", bg)}>
+      <p className="text-[10px] text-slate-500 mb-1 uppercase tracking-wider font-semibold">{label}</p>
+      <p className={cn("text-lg font-bold leading-none", color)}>{value}</p>
+      {subtitle && <p className={cn("text-[10px] mt-1 font-bold", color)}>{subtitle}</p>}
+    </div>
+  );
+}
 
+// ──────────────────────────────────────
+// Add Dividend Form
+// ──────────────────────────────────────
+function AddDividendForm({ asset, userId, onSave, onCancel }: any) {
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    date: new Date().toISOString().split('T')[0],
+    amount: "",
+    type: "Dividendo",
+    ticker: asset.ticker || "",
+    name: asset.name
+  });
+
+  const handleSubmit = async () => {
+    if (!formData.amount || Number(formData.amount) <= 0) { alert("Informe um valor válido."); return; }
+    setLoading(true);
+    try {
+      await addDividend(userId, { ...formData, amount: Number(formData.amount) });
+      onSave();
+    } catch (error) {
+      alert("Erro ao salvar provento.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Label>Data do Pagamento</Label>
+        <Input type="date" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} />
+      </div>
+      <div className="space-y-2">
+        <Label>Valor Total Recebido</Label>
+        <div className="relative">
+          <DollarSign className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
+          <Input className="pl-9" type="number" placeholder="0,00" value={formData.amount} onChange={(e) => setFormData({ ...formData, amount: e.target.value })} />
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Label>Tipo</Label>
+        <select className="flex h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none"
+          value={formData.type} onChange={(e) => setFormData({ ...formData, type: e.target.value })}>
+          {dividendTypes.map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
+      </div>
+      <div className="flex gap-2 pt-2">
+        <Button className="flex-1" onClick={handleSubmit} disabled={loading}>{loading ? "Salvando..." : "Confirmar Recebimento"}</Button>
+        <Button variant="outline" onClick={onCancel}>Cancelar</Button>
+      </div>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────
+// Forms / Cards Helpers (as before)
+// ──────────────────────────────────────
+function AddInvestmentForm({ type, onSave, onCancel, editingInvestment, isContribution }: any) {
+  const [loading, setLoading] = useState(false);
+  const defaultForm = { name: "", ticker: "", assetType: "Ações", broker: "", quantity: "", purchasePrice: "", invested: "", currentValue: "", date: new Date().toISOString().split('T')[0] };
+  const [formData, setFormData] = useState(defaultForm);
   React.useEffect(() => {
     if (editingInvestment) {
       setFormData({
-        name: editingInvestment.name || "",
-        ticker: editingInvestment.ticker || "",
-        assetType: editingInvestment.assetType || "Ações",
-        broker: editingInvestment.broker || "",
-        quantity: isContribution ? "" : (editingInvestment.quantity?.toString() || ""),
+        name: editingInvestment.name || "", ticker: editingInvestment.ticker || "", assetType: editingInvestment.assetType || "Ações",
+        broker: editingInvestment.broker || "", quantity: isContribution ? "" : (editingInvestment.quantity?.toString() || ""),
         purchasePrice: isContribution ? "" : (editingInvestment.purchasePrice?.toString() || ""),
-        invested: isContribution ? "" : (editingInvestment.invested?.toString() || ""),
+        invested: isContribution ? "" : (editingInvestment.invested?.toString() || ""), 
         currentValue: isContribution ? "" : (editingInvestment.currentValue?.toString() || ""),
         date: isContribution ? new Date().toISOString().split('T')[0] : (editingInvestment.date || new Date().toISOString().split('T')[0])
       });
-    } else {
-      setFormData(defaultForm);
-    }
+    } else { setFormData(defaultForm); }
   }, [editingInvestment, isContribution]);
 
   const handleSubmit = async () => {
     const qty = Number(formData.quantity) || 0;
     const pPrice = Number(formData.purchasePrice) || 0;
     const manualInvested = Number(formData.invested) || 0;
-    const investedVal = manualInvested || (qty * pPrice);
-    const purchasePriceVal = pPrice || (manualInvested / (qty || 1));
-
-    if (!formData.name) { alert("Por favor, preencha o nome do ativo."); return; }
-    if (!investedVal || investedVal <= 0) { alert("Preencha o valor investido ou a quantidade e o preço médio."); return; }
-
+    if (!formData.name) { alert("Nome obrigatório"); return; }
     setLoading(true);
     try {
-      const payload = {
-        ...formData,
-        ticker: formData.ticker.toUpperCase().trim(),
-        quantity: qty || 1,
-        purchasePrice: purchasePriceVal,
-        invested: investedVal,
-        currentValue: Number(formData.currentValue || investedVal)
+      const payload = { ...formData, ticker: (formData.ticker || "").toUpperCase().trim(), quantity: qty || 1, 
+        purchasePrice: pPrice || (manualInvested / (qty || 1)), invested: manualInvested || (qty * pPrice),
+        currentValue: Number(formData.currentValue || manualInvested || (qty * pPrice))
       };
-      if (editingInvestment && !isContribution) {
-        await updateInvestment(editingInvestment.id, payload);
-      } else {
-        await addInvestment(type, payload);
-      }
+      if (editingInvestment && !isContribution) { await updateInvestment(editingInvestment.id, payload); }
+      else { await addInvestment(type, payload); }
       onSave();
-    } catch (error) {
-      console.error("Erro ao salvar investimento:", error);
-      alert("Erro ao salvar registro.");
-    } finally {
-      setLoading(false);
-    }
+    } catch (error) { alert("Erro ao salvar"); } finally { setLoading(false); }
   };
-
-  const autoInvested = Number(formData.quantity) * Number(formData.purchasePrice) || 0;
 
   return (
     <Card className="border-primary/20 bg-primary/5">
-      <CardHeader>
-        <CardTitle>
-          {isContribution ? `Novo Aporte — ${formData.name}` : (editingInvestment ? "Editar Ativo" : "Novo Ativo")}
-        </CardTitle>
-        <CardDescription>
-          {isContribution ? "Registre uma nova compra deste ativo." : (editingInvestment ? "Atualize as informações." : "Registre um novo investimento no portfólio.")}
-        </CardDescription>
-      </CardHeader>
+      <CardHeader><CardTitle>{isContribution ? `Novo Aporte — ${formData.name}` : (editingInvestment ? "Editar Ativo" : "Novo Ativo")}</CardTitle></CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="inv-name">Nome do Ativo</Label>
-            <Input id="inv-name" placeholder="Ex: BB Seguridade, Bitcoin" value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="inv-ticker">Ticker (para cotação)</Label>
-            <Input id="inv-ticker" placeholder="Ex: BBSE3, IVVB11" value={formData.ticker}
-              onChange={(e) => setFormData({ ...formData, ticker: e.target.value })} />
-          </div>
+          <div className="space-y-2"><Label>Nome</Label><Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} /></div>
+          <div className="space-y-2"><Label>Ticker</Label><Input placeholder="PETR4, BBSE3" value={formData.ticker} onChange={(e) => setFormData({ ...formData, ticker: e.target.value })} /></div>
         </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="inv-type">Tipo</Label>
-            <select id="inv-type" className="flex h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all"
-              value={formData.assetType} onChange={(e) => setFormData({ ...formData, assetType: e.target.value })}>
-              {assetTypes.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="inv-broker">Corretora</Label>
-            <Input id="inv-broker" placeholder="Ex: XP, BTG, Inter" value={formData.broker}
-              onChange={(e) => setFormData({ ...formData, broker: e.target.value })} />
-          </div>
-        </div>
-
         <div className="grid grid-cols-3 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="inv-qty">Quantidade</Label>
-            <Input id="inv-qty" type="number" placeholder="0" value={formData.quantity}
-              onChange={(e) => setFormData({ ...formData, quantity: e.target.value })} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="inv-price">Preço Médio (cota)</Label>
-            <Input id="inv-price" type="number" placeholder="0,00" value={formData.purchasePrice}
-              onChange={(e) => setFormData({ ...formData, purchasePrice: e.target.value })} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="inv-invested">Total Investido</Label>
-            <Input id="inv-invested" type="number" placeholder="Automático"
-              value={formData.invested || (autoInvested > 0 ? autoInvested : "")}
-              readOnly={!!(formData.quantity && formData.purchasePrice)}
-              onChange={(e) => setFormData({ ...formData, invested: e.target.value })} />
-          </div>
+          <div className="space-y-2"><Label>Qtd</Label><Input type="number" value={formData.quantity} onChange={(e) => setFormData({ ...formData, quantity: e.target.value })} /></div>
+          <div className="space-y-2"><Label>Preço Unit.</Label><Input type="number" value={formData.purchasePrice} onChange={(e) => setFormData({ ...formData, purchasePrice: e.target.value })} /></div>
+          <div className="space-y-2"><Label>Investido Total</Label><Input type="number" value={formData.invested || (Number(formData.quantity) * Number(formData.purchasePrice) || "")} onChange={(e) => setFormData({ ...formData, invested: e.target.value })} /></div>
         </div>
-
         <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="inv-date">Data da Compra</Label>
-            <Input id="inv-date" type="date" value={formData.date}
-              onChange={(e) => setFormData({ ...formData, date: e.target.value })} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="inv-current">Valor Atual (Total)</Label>
-            <Input id="inv-current" type="number" placeholder="Opcional" value={formData.currentValue}
-              onChange={(e) => setFormData({ ...formData, currentValue: e.target.value })} />
-          </div>
+          <div className="space-y-2"><Label>Data</Label><Input type="date" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} /></div>
+          <div className="space-y-2"><Label>Corretora</Label><Input value={formData.broker} onChange={(e) => setFormData({ ...formData, broker: e.target.value })} /></div>
         </div>
-
         <div className="flex gap-2">
-          <Button className="flex-1" onClick={handleSubmit} disabled={loading}>
-            {loading ? "Salvando..." : (editingInvestment && !isContribution ? "Atualizar Ativo" : "Registrar Ativo")}
-          </Button>
-          <Button variant="outline" onClick={onCancel} disabled={loading}>Cancelar</Button>
+          <Button className="flex-1" onClick={handleSubmit} disabled={loading}>{loading ? "Salvando..." : "Salvar Registro"}</Button>
+          <Button variant="outline" onClick={onCancel}>Cancelar</Button>
         </div>
       </CardContent>
     </Card>
   );
 }
 
-// ──────────────────────────────────────
-// Stats / Chart Components
-// ──────────────────────────────────────
-function StatsCard({ title, value, icon: Icon }: any) {
+function StatsCard({ title, value, icon: Icon, subtitle }: any) {
   return (
     <Card>
       <CardContent className="pt-6">
@@ -745,6 +701,7 @@ function StatsCard({ title, value, icon: Icon }: any) {
           <div>
             <p className="text-sm font-medium text-slate-500">{title}</p>
             <h3 className="text-2xl font-bold text-slate-900">{formatCurrency(value)}</h3>
+            {subtitle && <p className="text-[10px] text-emerald-600 font-bold">{subtitle}</p>}
           </div>
         </div>
       </CardContent>
@@ -758,18 +715,14 @@ function ProfitCard({ value, percentage }: { value: number, percentage: number }
     <Card>
       <CardContent className="pt-6">
         <div className="flex items-center gap-4">
-          <div className={cn("p-3 rounded-xl", isPositive ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600")}>
-            {isPositive ? <TrendingUp className="w-6 h-6" /> : <TrendingDown className="w-6 h-6" />}
+          <div className={isPositive ? "bg-emerald-50 text-emerald-600 p-3 rounded-xl" : "bg-red-50 text-red-600 p-3 rounded-xl"}>
+            <TrendingUp className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-sm font-medium text-slate-500">Rentabilidade Total</p>
+            <p className="text-sm font-medium text-slate-500">Lucro/Prejuízo Total (Inc. Prov.)</p>
             <div className="flex items-baseline gap-2">
-              <h3 className={cn("text-2xl font-bold", isPositive ? "text-emerald-600" : "text-red-600")}>
-                {formatCurrency(value)}
-              </h3>
-              <span className={cn("text-sm font-bold", isPositive ? "text-emerald-500" : "text-red-500")}>
-                {isPositive ? "+" : ""}{percentage.toFixed(2)}%
-              </span>
+              <h3 className={cn("text-2xl font-bold", isPositive ? "text-emerald-600" : "text-red-600")}>{formatCurrency(value)}</h3>
+              <span className={cn("text-sm font-bold", isPositive ? "text-emerald-500" : "text-red-500")}>{isPositive ? "+" : ""}{percentage.toFixed(2)}%</span>
             </div>
           </div>
         </div>
@@ -781,28 +734,20 @@ function ProfitCard({ value, percentage }: { value: number, percentage: number }
 function AllocationCard({ distribution, COLORS }: any) {
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Alocação</CardTitle>
-        <CardDescription>Distribuição por classe de ativos.</CardDescription>
-      </CardHeader>
+      <CardHeader><CardTitle>Alocação</CardTitle></CardHeader>
       <CardContent className="h-[250px]">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie data={distribution} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
-              {distribution.map((entry: any, index: number) => (
-                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-              ))}
+              {distribution.map((entry: any, index: number) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
             </Pie>
-            <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
+            <Tooltip contentStyle={{ borderRadius: '12px', border: 'none' }} />
           </PieChart>
         </ResponsiveContainer>
-        <div className="mt-4 space-y-2">
+        <div className="mt-4 space-y-1">
           {distribution.map((item: any, index: number) => (
-            <div key={item.name} className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
-                <span className="text-slate-600">{item.name}</span>
-              </div>
+            <div key={item.name} className="flex items-center justify-between text-xs">
+              <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div> {item.name}</div>
               <span className="font-semibold">{formatCurrency(item.value)}</span>
             </div>
           ))}
@@ -814,28 +759,13 @@ function AllocationCard({ distribution, COLORS }: any) {
 
 function SmartAllocationCard({ distribution }: any) {
   return (
-    <Card className="bg-slate-900 text-white border-none overflow-hidden relative">
-      <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full -mr-16 -mt-16 blur-3xl"></div>
-      <CardHeader>
-        <CardTitle className="text-white">Alocação Inteligente</CardTitle>
-      </CardHeader>
+    <Card className="bg-slate-900 text-white border-none relative overflow-hidden">
+      <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl"></div>
+      <CardHeader><CardTitle className="text-white text-lg">Dica de Gestão</CardTitle></CardHeader>
       <CardContent>
-        <p className="text-slate-400 text-sm leading-relaxed">
-          Seu portfólio está concentrado em <span className="text-white font-bold">{distribution[0]?.name || "N/A"}</span>. Para maior segurança, diversifique em outras classes.
-        </p>
-        <Button className="w-full mt-6 bg-white text-slate-900 hover:bg-slate-100 border-none">
-          Ver Sugestões
-        </Button>
+        <p className="text-slate-400 text-xs leading-relaxed">Sua maior alocação está em <span className="text-white font-bold">{distribution[0]?.name || "N/A"}</span>. Considere rebalancear sua carteira para reduzir riscos.</p>
+        <Button className="w-full mt-4 bg-white text-slate-900 border-none h-9 text-xs">Gerar Relatório</Button>
       </CardContent>
     </Card>
-  );
-}
-
-function TrendingDown(props: any) {
-  return (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="22 17 13.5 8.5 8.5 13.5 2 7" />
-      <polyline points="16 17 22 17 22 11" />
-    </svg>
   );
 }
