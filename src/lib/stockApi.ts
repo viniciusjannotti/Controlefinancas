@@ -2,9 +2,6 @@ export async function fetchStockPrices(tickers: string[]) {
   if (tickers.length === 0) return {};
 
   try {
-    // Brapi requires authentication for most assets.
-    // Only PETR4, MGLU3, VALE3, ITUB4 work without a token (testing only).
-    // Brapi requires .SA for most B3 assets.
     const symbols = tickers
       .map(t => t.includes('.') ? t.toUpperCase() : `${t.toUpperCase()}.SA`)
       .join(',');
@@ -16,19 +13,18 @@ export async function fetchStockPrices(tickers: string[]) {
     
     const response = await fetch(url);
 
-    // If 401, the token is missing or invalid
     if (response.status === 401) {
       throw new Error('BRAPI_AUTH_REQUIRED');
     }
 
     if (!response.ok) {
-      throw new Error(`HTTP_ERROR_${response.status}`);
+      const errorText = await response.text();
+      throw new Error(`API_ERROR_${response.status}_${errorText.substring(0, 50)}`);
     }
 
     const data = await response.json();
 
     if (!data.results || data.results.length === 0) {
-      console.error("Brapi: No results found for tickers:", symbols);
       return {};
     }
 
@@ -43,10 +39,7 @@ export async function fetchStockPrices(tickers: string[]) {
 
     return prices;
   } catch (error: any) {
-    if (error.message === 'BRAPI_AUTH_REQUIRED') {
-      throw error; // Re-throw so the caller can show a specific message
-    }
-    console.error("Error fetching stock prices:", error);
-    return {};
+    // Repassa o erro para o handleRefreshQuotes tratar
+    throw error;
   }
 }

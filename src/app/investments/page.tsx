@@ -147,7 +147,7 @@ export default function InvestmentsPage() {
           "O plano gratuito permite 15.000 consultas/mês."
         );
       } else {
-        alert("Erro ao conectar com a API de cotações. Verifique sua conexão.");
+        alert(`Erro na API: ${error?.message || "Erro desconhecido"}\n\nVerifique sua conexão ou se o token no Vercel está correto.`);
       }
     } finally {
       setLoading(false);
