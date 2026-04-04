@@ -26,11 +26,13 @@ export const addEarning = async (userId: string, data: any) => {
 export const getEarnings = async (userId: string) => {
   const q = query(
     collection(db, "earnings"), 
-    where("userId", "==", userId),
-    orderBy("date", "desc")
+    where("userId", "==", userId)
   );
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  // Sort in JS to avoid composite index requirement
+  return querySnapshot.docs
+    .map(doc => ({ id: doc.id, ...doc.data() }))
+    .sort((a: any, b: any) => (b.date || "").localeCompare(a.date || ""));
 };
 
 export const updateEarning = async (id: string, data: any) => {
@@ -188,11 +190,13 @@ export const addDividend = async (userId: string, data: any) => {
 export const getDividends = async (userId: string) => {
   const q = query(
     collection(db, "dividends"), 
-    where("userId", "==", userId),
-    orderBy("date", "desc")
+    where("userId", "==", userId)
   );
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  // Sort in JS to avoid composite index requirement
+  return querySnapshot.docs
+    .map(doc => ({ id: doc.id, ...doc.data() }))
+    .sort((a: any, b: any) => (b.date || "").localeCompare(a.date || ""));
 };
 
 export const deleteDividend = async (id: string) => {
