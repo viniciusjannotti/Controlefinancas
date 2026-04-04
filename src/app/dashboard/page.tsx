@@ -411,6 +411,94 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* Monthly History Block */}
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle className="text-xl">Histórico Mensal Detalhado</CardTitle>
+          <p className="text-slate-500 text-sm">Acompanhe a evolução de ganhos e gastos mês a mês para controle ao longo do tempo.</p>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100">
+                  <th className="text-left py-3 px-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Mês</th>
+                  <th className="text-right py-3 px-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Ganhos</th>
+                  <th className="text-right py-3 px-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Gastos</th>
+                  <th className="text-right py-3 px-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Saldo Líquido</th>
+                  <th className="py-3 px-4 text-xs font-bold text-slate-400 uppercase tracking-wider w-40">Proporção</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...monthlyData].reverse().map((month, i) => {
+                  const saldo = month.earnings - month.expenses;
+                  const isPositive = saldo >= 0;
+                  const maxVal = Math.max(month.earnings, month.expenses, 1);
+                  const earningsWidth = Math.round((month.earnings / maxVal) * 100);
+                  const expensesWidth = Math.round((month.expenses / maxVal) * 100);
+                  return (
+                    <tr key={month.monthKey || i} className="border-b border-slate-50 hover:bg-slate-50/60 transition-colors group">
+                      <td className="py-4 px-4">
+                        <span className="font-bold text-slate-700 capitalize">{month.name}</span>
+                      </td>
+                      <td className="py-4 px-4 text-right">
+                        <span className="font-semibold text-emerald-600">{formatCurrency(month.earnings)}</span>
+                      </td>
+                      <td className="py-4 px-4 text-right">
+                        <span className="font-semibold text-red-500">{formatCurrency(month.expenses)}</span>
+                      </td>
+                      <td className="py-4 px-4 text-right">
+                        <span className={cn("font-bold text-base", isPositive ? "text-emerald-600" : "text-red-600")}>
+                          {isPositive ? "+" : ""}{formatCurrency(saldo)}
+                        </span>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                            <div className="flex-1 bg-slate-100 rounded-full h-1.5">
+                              <div className="bg-emerald-500 h-1.5 rounded-full transition-all" style={{ width: `${earningsWidth}%` }} />
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-2 h-2 rounded-full bg-red-400 shrink-0" />
+                            <div className="flex-1 bg-slate-100 rounded-full h-1.5">
+                              <div className="bg-red-400 h-1.5 rounded-full transition-all" style={{ width: `${expensesWidth}%` }} />
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="bg-slate-50 rounded-xl">
+                  <td className="py-4 px-4 font-bold text-slate-900">Total (6 meses)</td>
+                  <td className="py-4 px-4 text-right font-black text-emerald-600">
+                    {formatCurrency(monthlyData.reduce((acc, m) => acc + m.earnings, 0))}
+                  </td>
+                  <td className="py-4 px-4 text-right font-black text-red-500">
+                    {formatCurrency(monthlyData.reduce((acc, m) => acc + m.expenses, 0))}
+                  </td>
+                  <td className="py-4 px-4 text-right">
+                    {(() => {
+                      const totalSaldo = monthlyData.reduce((acc, m) => acc + (m.earnings - m.expenses), 0);
+                      return (
+                        <span className={cn("font-black text-base", totalSaldo >= 0 ? "text-emerald-600" : "text-red-600")}>
+                          {totalSaldo >= 0 ? "+" : ""}{formatCurrency(totalSaldo)}
+                        </span>
+                      );
+                    })()}
+                  </td>
+                  <td className="py-4 px-4" />
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* NEW: Family Investment Context Summary */}
       <Card className="w-full bg-slate-900 text-white border-none overflow-hidden relative">
         <div className="absolute top-0 right-0 w-64 h-64 bg-primary/20 rounded-full blur-3xl -mr-32 -mt-32"></div>
