@@ -304,6 +304,14 @@ export default function InvestmentsPage() {
                     openForm(assetGroup.entries[0], true);
                     setSelectedAsset(null);
                   }}
+                  onDeleteGroup={async (assetGroup: any) => {
+                    if (confirm(`Excluir todos os registros de "${assetGroup.name}"? Esta ação não pode ser desfeita.`)) {
+                      for (const entry of assetGroup.entries) {
+                        await deleteInvestment(entry.id);
+                      }
+                      fetchData();
+                    }
+                  }}
                 />
               </div>
               <div className="space-y-6">
@@ -395,7 +403,7 @@ export default function InvestmentsPage() {
 // ──────────────────────────────────────
 // Consolidated Table
 // ──────────────────────────────────────
-function ConsolidatedTable({ consolidated, loading, onRowClick, onNewContribution }: any) {
+function ConsolidatedTable({ consolidated, loading, onRowClick, onNewContribution, onDeleteGroup }: any) {
   const [openMenuKey, setOpenMenuKey] = useState<string | null>(null);
 
   if (loading) {
@@ -473,7 +481,7 @@ function ConsolidatedTable({ consolidated, loading, onRowClick, onNewContributio
                         onClick={() => setOpenMenuKey(null)}
                       />
                       {/* Dropdown */}
-                      <div className="absolute right-0 top-9 z-20 w-44 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                      <div className="absolute right-0 top-9 z-20 w-48 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
                         <button
                           className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 font-medium transition-colors"
                           onClick={() => { onRowClick(assetGroup); setOpenMenuKey(null); }}
@@ -487,6 +495,14 @@ function ConsolidatedTable({ consolidated, loading, onRowClick, onNewContributio
                         >
                           <Plus className="w-3.5 h-3.5 text-slate-400" />
                           Novo Aporte
+                        </button>
+                        <div className="border-t border-slate-100 my-1" />
+                        <button
+                          className="w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 flex items-center gap-2 font-medium transition-colors"
+                          onClick={() => { onDeleteGroup(assetGroup); setOpenMenuKey(null); }}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          Excluir Ativo
                         </button>
                       </div>
                     </>
