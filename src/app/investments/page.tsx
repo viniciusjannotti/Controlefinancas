@@ -56,7 +56,7 @@ import {
 } from "@/lib/firebase/db";
 import { fetchStockPrices } from "@/lib/stockApi";
 
-const assetTypes = ["Ações", "ETFs", "Renda Fixa", "Crypto", "Outro"];
+const assetTypes = ["Ações", "FIIs", "ETFs", "Fundos de Investimento", "Renda Fixa", "Crypto", "Outros"];
 const dividendTypes = ["Dividendo", "JCP", "Rendimento", "Outro"];
 
 const growthData = [
@@ -718,9 +718,19 @@ function AddInvestmentForm({ type, onSave, onCancel, editingInvestment, isContri
     <Card className="border-primary/20 bg-primary/5">
       <CardHeader><CardTitle>{isContribution ? `Novo Aporte — ${formData.name}` : (editingInvestment ? "Editar Ativo" : "Novo Ativo")}</CardTitle></CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-2"><Label>Nome</Label><Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} /></div>
-          <div className="space-y-2"><Label>Ticker</Label><Input placeholder="PETR4, BBSE3" value={formData.ticker} onChange={(e) => setFormData({ ...formData, ticker: e.target.value })} /></div>
+          <div className="space-y-2"><Label>Ticker</Label><Input placeholder="PETR4, AUVP11" value={formData.ticker} onChange={(e) => setFormData({ ...formData, ticker: e.target.value.toUpperCase() })} /></div>
+          <div className="space-y-2">
+            <Label>Tipo de Ativo</Label>
+            <select 
+              className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all"
+              value={formData.assetType}
+              onChange={(e) => setFormData({...formData, assetType: e.target.value})}
+            >
+              {assetTypes.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
         </div>
         <div className="grid grid-cols-3 gap-4">
           <div className="space-y-2"><Label>Qtd</Label><Input type="number" value={formData.quantity} onChange={(e) => setFormData({ ...formData, quantity: e.target.value })} /></div>
