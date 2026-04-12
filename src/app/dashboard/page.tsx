@@ -9,7 +9,8 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   X,
-  ChevronRight
+  ChevronRight,
+  Briefcase
 } from "lucide-react";
 import { 
   BarChart, 
@@ -30,18 +31,9 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { formatCurrency, cn } from "@/lib/utils";
 import React, { useState, useEffect } from "react";
-import { getEarnings, getExpenses } from "@/lib/firebase/db";
+import { getEarnings, getExpenses, getInvestments, getDividends } from "@/lib/firebase/db";
 import { startOfMonth, subMonths, format, isWithinInterval, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-
-const investmentDataMock = [
-  { name: "Jan", balance: 10000 },
-  { name: "Fev", balance: 11500 },
-  { name: "Mar", balance: 12100 },
-  { name: "Abr", balance: 13500 },
-  { name: "Mai", balance: 14800 },
-  { name: "Jun", balance: 16200 },
-];
 
 export default function Dashboard() {
   const [loading, setLoading] = useState(true);
@@ -49,7 +41,9 @@ export default function Dashboard() {
     monthlyEarnings: 0,
     monthlyExpenses: 0,
     netBalance: 0,
-    totalInvested: 16200, // Keep mock for now
+    totalInvested: 0,
+    totalMarketValue: 0,
+    totalDividends: 0
   });
   const [monthlyData, setMonthlyData] = useState<any[]>([]);
   const [categoryData, setCategoryData] = useState<any[]>([]);
@@ -60,13 +54,28 @@ export default function Dashboard() {
     async function fetchData() {
       setLoading(true);
       try {
-        const [mariaEarnings, viniciusEarnings, allExpenses] = await Promise.all([
+        const [
+          mariaEarnings, 
+          viniciusEarnings, 
+          allExpenses,
+          mariaInvestments,
+          viniciusInvestments,
+          mariaDividends,
+          viniciusDividends
+        ] = await Promise.all([
           getEarnings("maria") as Promise<any[]>,
           getEarnings("vinicius") as Promise<any[]>,
-          getExpenses() as Promise<any[]>
+          getExpenses() as Promise<any[]>,
+          getInvestments("maria") as Promise<any[]>,
+          getInvestments("vinicius") as Promise<any[]>,
+          getDividends("maria") as Promise<any[]>,
+          getDividends("vinicius") as Promise<any[]>
         ]);
 
         const allEarnings = [...mariaEarnings, ...viniciusEarnings];
+        const allInvestments = [...mariaInvestments, ...viniciusInvestments];
+        const allDividends = [...mariaDividends, ...viniciusDividends];
+        
         const now = new Date();
         const startOfCurrentMonth = startOfMonth(now);
         
@@ -85,14 +94,21 @@ export default function Dashboard() {
           })
           .reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
 
-        setMetrics(prev => ({
-          ...prev,
+        // 2. Investment Metrics (Family Consolidated)
+        const familyTotalInvested = allInvestments.reduce((acc, curr) => acc + (Number(curr.invested) || 0), 0);
+        const familyTotalMarketValue = allInvestments.reduce((acc, curr) => acc + (Number(curr.currentValue) || 0), 0);
+        const familyTotalDividends = allDividends.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+
+        setMetrics({
           monthlyEarnings: currentMonthEarnings,
           monthlyExpenses: currentMonthExpenses,
-          netBalance: currentMonthEarnings - currentMonthExpenses
-        }));
+          netBalance: currentMonthEarnings - currentMonthExpenses,
+          totalInvested: familyTotalInvested,
+          totalMarketValue: familyTotalMarketValue,
+          totalDividends: familyTotalDividends
+        });
 
-        // 2. Aggregate Monthly Data (Last 6 Months)
+        // 3. Aggregate Monthly Data (Last 6 Months)
         const last6Months = Array.from({ length: 6 }, (_, i) => {
           const d = subMonths(now, 5 - i);
           return {
@@ -123,25 +139,14 @@ export default function Dashboard() {
 
         setMonthlyData(last6Months);
 
-        // 3. Aggregate Expenses by Category
+        // 4. Aggregate Expenses by Category
         const expensesByCategory: Record<string, number> = {};
         allExpenses.forEach(e => {
           const parentCategory = (e.category || "Outros").split(" > ")[0];
           expensesByCategory[parentCategory] = (expensesByCategory[parentCategory] || 0) + (Number(e.amount) || 0);
         });
 
-        const colors = [
-          "#3B82F6", // Blue
-          "#8B5CF6", // Purple
-          "#10B981", // Emerald
-          "#F59E0B", // Amber
-          "#EC4899", // Pink
-          "#6366F1", // Indigo
-          "#14B8A6", // Teal
-          "#F43F5E", // Rose
-          "#84CC16", // Lime
-          "#EAB308", // Yellow
-        ];
+        const colors = ["#3B82F6", "#8B5CF6", "#10B981", "#F59E0B", "#EC4899", "#6366F1", "#14B8A6", "#F43F5E", "#84CC16", "#EAB308"];
         const catData = Object.entries(expensesByCategory)
           .map(([name, value], i) => ({
             name,
@@ -152,7 +157,7 @@ export default function Dashboard() {
 
         setCategoryData(catData);
 
-        // 4. Aggregate Detailed Data for Sub-categories
+        // 5. Aggregate Detailed Data for Sub-categories
         const detailedDetails: Record<string, any[]> = {};
         allExpenses.forEach(e => {
           const parts = (e.category || "Outros").split(" > ");
@@ -173,7 +178,6 @@ export default function Dashboard() {
           }
         });
 
-        // Sort subcategories by value
         Object.keys(detailedDetails).forEach(cat => {
           detailedDetails[cat].sort((a, b) => b.value - a.value);
         });
@@ -198,11 +202,14 @@ export default function Dashboard() {
     );
   }
 
+  const profitLoss = (metrics.totalMarketValue - metrics.totalInvested) + metrics.totalDividends;
+  const profitPercentage = metrics.totalInvested > 0 ? (profitLoss / metrics.totalInvested) * 100 : 0;
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col gap-2">
-        <h2 className="text-3xl font-bold tracking-tight text-slate-900">Painel</h2>
-        <p className="text-slate-500 text-lg">Bem-vindos de volta, Maria Cecília & Vinícius.</p>
+        <h2 className="text-3xl font-bold tracking-tight text-slate-900">Painel Geral</h2>
+        <p className="text-slate-500 text-lg">Visão consolidada da saúde financeira da família.</p>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -231,12 +238,13 @@ export default function Dashboard() {
           color="blue"
         />
         <SummaryCard 
-          title="Total Investido" 
-          value={metrics.totalInvested} 
-          trend="+4.5%" 
-          trendType="up"
-          icon={LineChartIcon}
+          title="Patrimônio Total" 
+          value={metrics.totalMarketValue + metrics.totalDividends} 
+          trend={`${profitPercentage >= 0 ? '+' : ''}${profitPercentage.toFixed(1)}%`} 
+          trendType={profitPercentage >= 0 ? "up" : "down"}
+          icon={Briefcase}
           color="blue"
+          subtitle={`Investido: ${formatCurrency(metrics.totalInvested)}`}
         />
       </div>
 
@@ -269,7 +277,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent className="h-[300px] flex items-center justify-center">
             {categoryData.length > 0 ? (
-              <div className="w-full h-full relative" onClick={() => categoryData[0]?.name && setSelectedCategory(categoryData[0].name)}>
+              <div className="w-full h-full relative">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart cx="50%" cy="50%">
                     <Pie
@@ -319,14 +327,11 @@ export default function Dashboard() {
               <button 
                 onClick={() => setSelectedCategory(null)}
                 className="p-2 hover:bg-slate-100 rounded-full transition-colors"
-                aria-label="Fechar"
               >
                 <X className="w-6 h-6 text-slate-400" />
               </button>
             </CardHeader>
             <CardContent className="p-0 overflow-hidden flex-1 flex flex-col md:flex-row">
-              
-              {/* Sidebar with Categories */}
               <div className="w-full md:w-1/3 bg-slate-50/50 border-r border-slate-100 overflow-x-auto md:overflow-y-auto flex flex-row md:flex-col p-4 gap-2 shrink-0 md:h-full">
                 {categoryData.map(cat => (
                   <button
@@ -350,7 +355,6 @@ export default function Dashboard() {
                 ))}
               </div>
 
-              {/* Detail View */}
               <div className="w-full md:w-2/3 p-6 overflow-y-auto">
                 <div className="flex items-center justify-between mb-8">
                   <h3 className="text-2xl font-bold text-slate-800">{selectedCategory}</h3>
@@ -387,7 +391,7 @@ export default function Dashboard() {
                   <div className="space-y-4">
                     <h4 className="font-bold text-slate-500 text-sm uppercase tracking-wider border-b border-slate-100 pb-2">Subcategorias</h4>
                     <div className="space-y-2">
-                      {(detailedCategoryData[selectedCategory] || []).map((item, i) => (
+                       {(detailedCategoryData[selectedCategory] || []).map((item, i) => (
                         <div key={i} className="flex items-center justify-between group p-3 bg-slate-50 hover:bg-slate-100 hover:shadow-sm rounded-xl transition-all border border-transparent hover:border-slate-200">
                           <div className="flex items-center gap-3">
                             <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
@@ -395,26 +399,10 @@ export default function Dashboard() {
                           </div>
                           <div className="flex items-center gap-3 text-right">
                             <span className="text-sm font-bold text-slate-900">{formatCurrency(item.value)}</span>
-                            <span className="text-[10px] text-slate-500 font-medium bg-white border border-slate-200 px-1.5 py-0.5 rounded-md min-w-[40px] text-center">
-                              {((item.value / categoryData.find(c => c.name === selectedCategory)?.value) * 100).toFixed(1)}%
-                            </span>
                           </div>
                         </div>
                       ))}
                     </div>
-                  </div>
-                </div>
-
-                <div className="mt-8 bg-blue-50/50 p-4 rounded-2xl border border-blue-100/50 flex items-start gap-4">
-                  <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shrink-0 shadow-sm border border-blue-100">
-                    <TrendingDown className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <div className="pt-0.5">
-                    <h5 className="text-sm font-bold text-blue-900">Insight Rápido</h5>
-                    <p className="text-xs text-blue-700/80 leading-relaxed mt-1">
-                      <strong className="font-semibold">{detailedCategoryData[selectedCategory]?.[0]?.name}</strong> representa a maior parte dos gastos em {selectedCategory}. 
-                      Monitorar de perto essa subcategoria pode ajudar a identificar oportunidades de economia.
-                    </p>
                   </div>
                 </div>
               </div>
@@ -423,42 +411,143 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* Monthly History Block */}
       <Card className="w-full">
         <CardHeader>
-          <CardTitle>Evolução dos Investimentos</CardTitle>
+          <CardTitle className="text-xl">Histórico Mensal Detalhado</CardTitle>
+          <p className="text-slate-500 text-sm">Acompanhe a evolução de ganhos e gastos mês a mês para controle ao longo do tempo.</p>
         </CardHeader>
-        <CardContent className="h-[300px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={investmentDataMock} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <defs>
-                <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.1}/>
-                  <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#94A3B8" }} dy={10} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#94A3B8" }} />
-              <Tooltip 
-                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-              />
-              <Area 
-                type="monotone" 
-                dataKey="balance" 
-                stroke="#3B82F6" 
-                strokeWidth={3}
-                fillOpacity={1} 
-                fill="url(#colorBalance)" 
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100">
+                  <th className="text-left py-3 px-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Mês</th>
+                  <th className="text-right py-3 px-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Ganhos</th>
+                  <th className="text-right py-3 px-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Gastos</th>
+                  <th className="text-right py-3 px-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Saldo Líquido</th>
+                  <th className="py-3 px-4 text-xs font-bold text-slate-400 uppercase tracking-wider w-40">Proporção</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...monthlyData].reverse().map((month, i) => {
+                  const saldo = month.earnings - month.expenses;
+                  const isPositive = saldo >= 0;
+                  const maxVal = Math.max(month.earnings, month.expenses, 1);
+                  const earningsWidth = Math.round((month.earnings / maxVal) * 100);
+                  const expensesWidth = Math.round((month.expenses / maxVal) * 100);
+                  return (
+                    <tr key={month.monthKey || i} className="border-b border-slate-50 hover:bg-slate-50/60 transition-colors group">
+                      <td className="py-4 px-4">
+                        <span className="font-bold text-slate-700 capitalize">{month.name}</span>
+                      </td>
+                      <td className="py-4 px-4 text-right">
+                        <span className="font-semibold text-emerald-600">{formatCurrency(month.earnings)}</span>
+                      </td>
+                      <td className="py-4 px-4 text-right">
+                        <span className="font-semibold text-red-500">{formatCurrency(month.expenses)}</span>
+                      </td>
+                      <td className="py-4 px-4 text-right">
+                        <span className={cn("font-bold text-base", isPositive ? "text-emerald-600" : "text-red-600")}>
+                          {isPositive ? "+" : ""}{formatCurrency(saldo)}
+                        </span>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                            <div className="flex-1 bg-slate-100 rounded-full h-1.5">
+                              <div className="bg-emerald-500 h-1.5 rounded-full transition-all" style={{ width: `${earningsWidth}%` }} />
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-2 h-2 rounded-full bg-red-400 shrink-0" />
+                            <div className="flex-1 bg-slate-100 rounded-full h-1.5">
+                              <div className="bg-red-400 h-1.5 rounded-full transition-all" style={{ width: `${expensesWidth}%` }} />
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="bg-slate-50 rounded-xl">
+                  <td className="py-4 px-4 font-bold text-slate-900">Total (6 meses)</td>
+                  <td className="py-4 px-4 text-right font-black text-emerald-600">
+                    {formatCurrency(monthlyData.reduce((acc, m) => acc + m.earnings, 0))}
+                  </td>
+                  <td className="py-4 px-4 text-right font-black text-red-500">
+                    {formatCurrency(monthlyData.reduce((acc, m) => acc + m.expenses, 0))}
+                  </td>
+                  <td className="py-4 px-4 text-right">
+                    {(() => {
+                      const totalSaldo = monthlyData.reduce((acc, m) => acc + (m.earnings - m.expenses), 0);
+                      return (
+                        <span className={cn("font-black text-base", totalSaldo >= 0 ? "text-emerald-600" : "text-red-600")}>
+                          {totalSaldo >= 0 ? "+" : ""}{formatCurrency(totalSaldo)}
+                        </span>
+                      );
+                    })()}
+                  </td>
+                  <td className="py-4 px-4" />
+                </tr>
+              </tfoot>
+            </table>
+          </div>
         </CardContent>
       </Card>
-</div>
+
+      {/* NEW: Family Investment Context Summary */}
+      <Card className="w-full bg-slate-900 text-white border-none overflow-hidden relative">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/20 rounded-full blur-3xl -mr-32 -mt-32"></div>
+        <CardHeader className="relative z-10">
+          <CardTitle className="text-2xl text-white">Resumo de Investimentos da Família</CardTitle>
+          <p className="text-slate-400">Visão consolidada de todas as contas.</p>
+        </CardHeader>
+        <CardContent className="relative z-10">
+          <div className="grid md:grid-cols-3 gap-8">
+            <div className="space-y-1">
+              <p className="text-xs text-slate-400 uppercase tracking-widest font-bold">Investido Total</p>
+              <p className="text-3xl font-black text-white">{formatCurrency(metrics.totalInvested)}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-slate-400 uppercase tracking-widest font-bold">Patrimônio Atual</p>
+              <p className="text-3xl font-black text-emerald-400">{formatCurrency(metrics.totalMarketValue + metrics.totalDividends)}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-slate-400 uppercase tracking-widest font-bold">Retorno Total acumulado</p>
+              <div className="flex items-baseline gap-3">
+                <p className={cn("text-3xl font-black", profitLoss >= 0 ? "text-emerald-400" : "text-red-400")}>
+                  {formatCurrency(profitLoss)}
+                </p>
+                <span className={cn("text-lg font-bold", profitLoss >= 0 ? "text-emerald-500" : "text-red-500")}>
+                  {profitPercentage.toFixed(2)}%
+                </span>
+              </div>
+            </div>
+          </div>
+          
+          <div className="mt-8 pt-6 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-4">
+             <div className="flex items-center gap-4 text-sm text-slate-300">
+               <div className="flex items-center gap-2">
+                 <div className="w-3 h-3 rounded-full bg-emerald-500" />
+                 <span>Rendimento Passivo (Proventos): <strong>{formatCurrency(metrics.totalDividends)}</strong></span>
+               </div>
+             </div>
+             <a href="/investments" className="text-xs font-bold bg-white text-slate-900 px-6 py-2.5 rounded-full hover:bg-slate-100 transition-colors">
+               Ver Detalhes dos Ativos
+             </a>
+          </div>
+        </CardContent>
+      </Card>
+      
+    </div>
   );
 }
 
-function SummaryCard({ title, value, trend, trendType, icon: Icon, color }: any) {
+function SummaryCard({ title, value, trend, trendType, icon: Icon, color, subtitle }: any) {
   return (
     <Card className="hover:scale-[1.02] transition-all duration-300">
       <CardContent className="pt-6">
@@ -477,6 +566,7 @@ function SummaryCard({ title, value, trend, trendType, icon: Icon, color }: any)
         <div className="mt-4">
           <p className="text-sm font-medium text-slate-500">{title}</p>
           <p className="text-2xl font-bold text-slate-900 mt-1">{formatCurrency(value)}</p>
+          {subtitle && <p className="text-[10px] text-slate-400 mt-1 font-medium">{subtitle}</p>}
         </div>
       </CardContent>
     </Card>

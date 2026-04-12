@@ -242,7 +242,14 @@ function EarningsTable({
               data.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell className="font-medium">
-                    {item.date?.seconds ? formatDate(new Date(item.date.seconds * 1000)) : formatDate(new Date(item.date))}
+                    {(() => {
+                      const d = item.date?.seconds 
+                        ? new Date(item.date.seconds * 1000) 
+                        : (typeof item.date === 'string' 
+                            ? new Date(item.date + 'T00:00:00') // Força meia-noite local
+                            : new Date(item.date));
+                      return formatDate(d);
+                    })()}
                   </TableCell>
                   <TableCell>{item.name}</TableCell>
                   <TableCell>
@@ -336,7 +343,10 @@ function AddEarningsForm({
       if (editingEarning.date?.seconds) {
         dateStr = new Date(editingEarning.date.seconds * 1000).toISOString().split('T')[0];
       } else if (editingEarning.date) {
-        dateStr = new Date(editingEarning.date).toISOString().split('T')[0];
+        // Se for string "YYYY-MM-DD", garante que seja tratada localmente ou como UTC consistente
+        dateStr = (typeof editingEarning.date === 'string' && !editingEarning.date.includes('T'))
+          ? new Date(editingEarning.date + 'T00:00:00').toLocaleDateString('en-CA') // Retorna YYYY-MM-DD
+          : new Date(editingEarning.date).toISOString().split('T')[0];
       }
       setFormData({
         date: dateStr,

@@ -26,11 +26,13 @@ export const addEarning = async (userId: string, data: any) => {
 export const getEarnings = async (userId: string) => {
   const q = query(
     collection(db, "earnings"), 
-    where("userId", "==", userId),
-    orderBy("date", "desc")
+    where("userId", "==", userId)
   );
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  // Sort in JS to avoid composite index requirement
+  return querySnapshot.docs
+    .map(doc => ({ id: doc.id, ...doc.data() }))
+    .sort((a: any, b: any) => (b.date || "").localeCompare(a.date || ""));
 };
 
 export const updateEarning = async (id: string, data: any) => {
@@ -92,6 +94,19 @@ export const updateInvestmentValue = async (id: string, newValue: number) => {
     currentValue: newValue,
     updatedAt: Timestamp.now(),
   });
+};
+
+export const updateInvestment = async (id: string, data: any) => {
+  const investmentRef = doc(db, "investments", id);
+  await updateDoc(investmentRef, {
+    ...data,
+    updatedAt: Timestamp.now(),
+  });
+};
+
+export const deleteInvestment = async (id: string) => {
+  const docRef = doc(db, "investments", id);
+  await deleteDoc(docRef);
 };
 
 export const getInvestments = async (userId: string) => {
@@ -162,4 +177,29 @@ export const getReminders = async () => {
 
 export const deleteReminder = async (id: string) => {
   await deleteDoc(doc(db, "reminders", id));
+};
+// Dividends / Proventos
+export const addDividend = async (userId: string, data: any) => {
+  return await addDoc(collection(db, "dividends"), {
+    ...data,
+    userId,
+    createdAt: Timestamp.now(),
+  });
+};
+
+export const getDividends = async (userId: string) => {
+  const q = query(
+    collection(db, "dividends"), 
+    where("userId", "==", userId)
+  );
+  const querySnapshot = await getDocs(q);
+  // Sort in JS to avoid composite index requirement
+  return querySnapshot.docs
+    .map(doc => ({ id: doc.id, ...doc.data() }))
+    .sort((a: any, b: any) => (b.date || "").localeCompare(a.date || ""));
+};
+
+export const deleteDividend = async (id: string) => {
+  const docRef = doc(db, "dividends", id);
+  await deleteDoc(docRef);
 };
