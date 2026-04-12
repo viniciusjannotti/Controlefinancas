@@ -12,8 +12,12 @@ import {
   CreditCard,
   Target,
   DollarSign,
-  TrendingUp
+  TrendingUp,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
+import { format, addMonths, subMonths, isSameMonth } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { 
   Card, 
   CardContent, 
@@ -46,6 +50,7 @@ export default function EarningsPage() {
   const [earnings, setEarnings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingEarning, setEditingEarning] = useState<any | null>(null);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
 
   const fetchEarnings = React.useCallback(async () => {
     setLoading(true);
@@ -80,7 +85,16 @@ export default function EarningsPage() {
     document.getElementById("earnings-form-card")?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const totalMonthly = earnings.reduce((acc: number, curr: any) => acc + (Number(curr.amount) || 0), 0);
+  const filteredEarnings = earnings.filter(e => {
+    const d = e.date?.seconds 
+      ? new Date(e.date.seconds * 1000) 
+      : (typeof e.date === 'string' 
+          ? new Date(e.date + 'T00:00:00') 
+          : new Date(e.date));
+    return isSameMonth(d, currentMonth);
+  });
+
+  const totalMonthly = filteredEarnings.reduce((acc: number, curr: any) => acc + (Number(curr.amount) || 0), 0);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -89,15 +103,28 @@ export default function EarningsPage() {
           <h2 className="text-3xl font-bold tracking-tight text-slate-900">Ganhos</h2>
           <p className="text-slate-500 text-lg">Gerencie as receitas individuais do casal.</p>
         </div>
-        <div className="flex gap-3">
-          <Button variant="outline">
-            <Download className="w-4 h-4 mr-2" />
-            Exportar
-          </Button>
-          <Button onClick={() => document.getElementById("date")?.focus()}>
-            <Plus className="w-4 h-4 mr-2" />
-            Novo Ganho
-          </Button>
+        <div className="flex items-center gap-4 flex-wrap justify-end">
+          <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <span className="text-sm font-semibold w-24 text-center capitalize">
+              {format(currentMonth, 'MMM yyyy', { locale: ptBR })}
+            </span>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+          <div className="flex gap-3">
+            <Button variant="outline">
+              <Download className="w-4 h-4 mr-2" />
+              Exportar
+            </Button>
+            <Button onClick={() => document.getElementById("date")?.focus()}>
+              <Plus className="w-4 h-4 mr-2" />
+              Novo Ganho
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -116,7 +143,7 @@ export default function EarningsPage() {
             <div className="lg:col-span-2 space-y-6">
               <EarningsTable 
                 type="maria" 
-                data={earnings} 
+                data={filteredEarnings} 
                 loading={loading} 
                 onDelete={handleDelete}
                 onEdit={handleEdit}
@@ -141,7 +168,7 @@ export default function EarningsPage() {
             <div className="lg:col-span-2 space-y-6">
               <EarningsTable 
                 type="vinicius" 
-                data={earnings} 
+                data={filteredEarnings} 
                 loading={loading} 
                 onDelete={handleDelete}
                 onEdit={handleEdit}

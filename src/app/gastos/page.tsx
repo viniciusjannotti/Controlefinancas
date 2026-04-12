@@ -12,8 +12,12 @@ import {
   Users,
   CreditCard,
   MessageSquare,
-  ArrowRight
+  ArrowRight,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
+import { format, addMonths, subMonths, isSameMonth } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { 
   BarChart, 
   Bar, 
@@ -113,6 +117,7 @@ export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingExpense, setEditingExpense] = useState<any | null>(null);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
 
   const fetchExpenses = React.useCallback(async () => {
     setLoading(true);
@@ -148,12 +153,21 @@ export default function ExpensesPage() {
     document.getElementById("form-card")?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const totalMonthly = expenses.reduce((acc: number, curr: any) => acc + (Number(curr.amount) || 0), 0);
-  const paidByMaria = expenses.filter((e: any) => e.userId === "maria").reduce((acc: number, curr: any) => acc + (Number(curr.amount) || 0), 0);
-  const paidByVinicius = expenses.filter((e: any) => e.userId === "vinicius").reduce((acc: number, curr: any) => acc + (Number(curr.amount) || 0), 0);
+  const filteredExpenses = expenses.filter(e => {
+    const d = e.date?.seconds 
+      ? new Date(e.date.seconds * 1000) 
+      : (typeof e.date === 'string' 
+          ? new Date(e.date + 'T00:00:00') 
+          : new Date(e.date));
+    return isSameMonth(d, currentMonth);
+  });
+
+  const totalMonthly = filteredExpenses.reduce((acc: number, curr: any) => acc + (Number(curr.amount) || 0), 0);
+  const paidByMaria = filteredExpenses.filter((e: any) => e.userId === "maria").reduce((acc: number, curr: any) => acc + (Number(curr.amount) || 0), 0);
+  const paidByVinicius = filteredExpenses.filter((e: any) => e.userId === "vinicius").reduce((acc: number, curr: any) => acc + (Number(curr.amount) || 0), 0);
 
   const pieData = Object.entries(
-    expenses.reduce((acc: Record<string, number>, curr: any) => {
+    filteredExpenses.reduce((acc: Record<string, number>, curr: any) => {
       const parent = (curr.category || "").split(" > ")[0];
       acc[parent] = (acc[parent] || 0) + (Number(curr.amount) || 0);
       return acc;
@@ -167,10 +181,23 @@ export default function ExpensesPage() {
           <h2 className="text-3xl font-bold tracking-tight text-slate-900">Gastos</h2>
           <p className="text-slate-500 text-lg">Controle os gastos compartilhados da casa.</p>
         </div>
-        <Button onClick={() => document.getElementById("date")?.focus()}>
-          <Plus className="w-4 h-4 mr-2" />
-          Novo Gasto
-        </Button>
+        <div className="flex items-center gap-4 flex-wrap justify-end">
+          <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <span className="text-sm font-semibold w-24 text-center capitalize">
+              {format(currentMonth, 'MMM yyyy', { locale: ptBR })}
+            </span>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+          <Button onClick={() => document.getElementById("date")?.focus()}>
+            <Plus className="w-4 h-4 mr-2" />
+            Novo Gasto
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
@@ -182,7 +209,7 @@ export default function ExpensesPage() {
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
           <ExpensesTable 
-            data={expenses} 
+            data={filteredExpenses} 
             loading={loading} 
             onDelete={handleDelete}
             onEdit={handleEdit}
