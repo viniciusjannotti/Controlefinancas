@@ -379,6 +379,7 @@ function AddExpenseForm({
     amount: "",
     method: "Cartão"
   });
+  const [installments, setInstallments] = useState(1);
 
   React.useEffect(() => {
     if (editingExpense) {
@@ -406,6 +407,7 @@ function AddExpenseForm({
         amount: "",
         method: "Cartão"
       });
+      setInstallments(1);
     }
   }, [editingExpense]);
 
@@ -417,21 +419,50 @@ function AddExpenseForm({
 
     setLoading(true);
     try {
-      const data = {
-        date: formData.date,
-        description: formData.description,
-        category: formData.category,
-        amount: Number(formData.amount),
-        method: formData.method
-      };
-
       if (editingExpense) {
+        const data = {
+          date: formData.date,
+          description: formData.description,
+          category: formData.category,
+          amount: Number(formData.amount),
+          method: formData.method
+        };
         await updateExpense(editingExpense.id, {
           ...data,
           userId: formData.userId // Allow changing user on edit too
         });
       } else {
-        await addExpense(formData.userId, data);
+        if (formData.method === "Cartão" && installments > 1) {
+          const totalAmount = Number(formData.amount);
+          const dividedAmount = totalAmount / installments;
+          
+          const [year, month, day] = formData.date.split("-").map(Number);
+          
+          for (let i = 0; i < installments; i++) {
+            const nextDate = addMonths(new Date(year, month - 1, day), i);
+            const yyyy = nextDate.getFullYear();
+            const mm = String(nextDate.getMonth() + 1).padStart(2, '0');
+            const dd = String(nextDate.getDate()).padStart(2, '0');
+            
+            const data = {
+              date: `${yyyy}-${mm}-${dd}`,
+              description: `${formData.description || formData.category.split(" > ").pop()} (Parcela ${i + 1}/${installments})`,
+              category: formData.category,
+              amount: dividedAmount,
+              method: formData.method
+            };
+            await addExpense(formData.userId, data);
+          }
+        } else {
+          const data = {
+            date: formData.date,
+            description: formData.description,
+            category: formData.category,
+            amount: Number(formData.amount),
+            method: formData.method
+          };
+          await addExpense(formData.userId, data);
+        }
       }
 
       setFormData({
@@ -530,6 +561,28 @@ function AddExpenseForm({
             </select>
           </div>
         </div>
+
+        {formData.method === "Cartão" && !editingExpense && (
+          <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+            <Label htmlFor="installments">Parcelamento (Sem Juros)</Label>
+            <select
+              id="installments"
+              className="flex h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all"
+              value={installments}
+              onChange={(e) => setInstallments(Number(e.target.value))}
+            >
+              {[...Array(12)].map((_, i) => {
+                const isValido = Number(formData.amount) > 0;
+                const vlParcela = isValido ? formatCurrency(Number(formData.amount) / (i + 1)) : "";
+                return (
+                  <option key={i + 1} value={i + 1}>
+                    {i + 1}x {i + 1 > 1 && isValido ? `de ${vlParcela}` : ''}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+        )}
 
         <div className="flex gap-2">
           {editingExpense && (
