@@ -271,7 +271,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="col-span-3">
+        <Card className="col-span-3 cursor-pointer hover:shadow-lg hover:border-primary/20 transition-all duration-300 group" onClick={() => categoryData.length > 0 && setSelectedCategory(categoryData[0].name)}>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle>Gastos por Categoria</CardTitle>
             <span className="text-xs font-semibold text-slate-500 capitalize bg-slate-100 px-2 py-1 rounded-md">
@@ -291,10 +291,10 @@ export default function Dashboard() {
                       outerRadius={80}
                       paddingAngle={5}
                       dataKey="value"
-                      onClick={(data) => data && data.name && setSelectedCategory(data.name)}
+                      isAnimationActive={true}
                     >
                       {categoryData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} className="hover:opacity-80 transition-opacity cursor-pointer focus:outline-none" />
+                        <Cell key={`cell-${index}`} fill={entry.color} className="group-hover:opacity-90 transition-opacity focus:outline-none" />
                       ))}
                     </Pie>
                     <Tooltip 
@@ -304,8 +304,8 @@ export default function Dashboard() {
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <span className="text-xs text-slate-400 font-medium">Clique para</span>
-                  <span className="text-xs text-slate-400 font-medium font-bold">detalhes</span>
+                  <span className="text-xs text-slate-400 font-medium group-hover:text-primary transition-colors">Clique para</span>
+                  <span className="text-xs text-slate-400 font-bold group-hover:text-primary transition-colors">detalhes</span>
                 </div>
               </div>
             ) : (
