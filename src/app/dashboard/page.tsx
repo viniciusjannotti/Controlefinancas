@@ -151,14 +151,6 @@ export default function Dashboard() {
     fetchData();
   }, []);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <p className="text-slate-500 animate-pulse">Carregando dados do dashboard...</p>
-      </div>
-    );
-  }
-
   const { categoryData, detailedCategoryData } = React.useMemo(() => {
     const expensesByCategory: Record<string, number> = {};
     const detailedDetails: Record<string, any[]> = {};
