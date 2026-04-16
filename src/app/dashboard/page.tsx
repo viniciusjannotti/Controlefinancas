@@ -205,6 +205,14 @@ export default function Dashboard() {
   const profitLoss = (metrics.totalMarketValue - metrics.totalInvested) + metrics.totalDividends;
   const profitPercentage = metrics.totalInvested > 0 ? (profitLoss / metrics.totalInvested) * 100 : 0;
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <p className="text-slate-500 animate-pulse">Carregando dados do dashboard...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col gap-2">
