@@ -10,6 +10,7 @@ import {
   ArrowDownRight,
   X,
   ChevronRight,
+  ChevronLeft,
   Briefcase
 } from "lucide-react";
 import { 
@@ -32,7 +33,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { formatCurrency, cn } from "@/lib/utils";
 import React, { useState, useEffect } from "react";
 import { getEarnings, getExpenses, getInvestments, getDividends } from "@/lib/firebase/db";
-import { startOfMonth, subMonths, format, isWithinInterval, parseISO } from "date-fns";
+import { startOfMonth, subMonths, format, isWithinInterval, parseISO, isSameMonth, addMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 export default function Dashboard() {
@@ -46,8 +47,8 @@ export default function Dashboard() {
     totalDividends: 0
   });
   const [monthlyData, setMonthlyData] = useState<any[]>([]);
-  const [categoryData, setCategoryData] = useState<any[]>([]);
-  const [detailedCategoryData, setDetailedCategoryData] = useState<Record<string, any[]>>({});
+  const [allExpensesList, setAllExpensesList] = useState<any[]>([]);
+  const [categoryMonth, setCategoryMonth] = useState<Date>(new Date());
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   useEffect(() => {
@@ -138,51 +139,7 @@ export default function Dashboard() {
         });
 
         setMonthlyData(last6Months);
-
-        // 4. Aggregate Expenses by Category
-        const expensesByCategory: Record<string, number> = {};
-        allExpenses.forEach(e => {
-          const parentCategory = (e.category || "Outros").split(" > ")[0];
-          expensesByCategory[parentCategory] = (expensesByCategory[parentCategory] || 0) + (Number(e.amount) || 0);
-        });
-
-        const colors = ["#3B82F6", "#8B5CF6", "#10B981", "#F59E0B", "#EC4899", "#6366F1", "#14B8A6", "#F43F5E", "#84CC16", "#EAB308"];
-        const catData = Object.entries(expensesByCategory)
-          .map(([name, value], i) => ({
-            name,
-            value,
-            color: colors[i % colors.length]
-          }))
-          .sort((a, b) => b.value - a.value);
-
-        setCategoryData(catData);
-
-        // 5. Aggregate Detailed Data for Sub-categories
-        const detailedDetails: Record<string, any[]> = {};
-        allExpenses.forEach(e => {
-          const parts = (e.category || "Outros").split(" > ");
-          const parent = parts[0];
-          const sub = parts[1] || parent;
-          
-          if (!detailedDetails[parent]) detailedDetails[parent] = [];
-          
-          const existing = detailedDetails[parent].find(s => s.name === sub);
-          if (existing) {
-            existing.value += (Number(e.amount) || 0);
-          } else {
-            detailedDetails[parent].push({
-              name: sub,
-              value: (Number(e.amount) || 0),
-              color: colors[detailedDetails[parent].length % colors.length]
-            });
-          }
-        });
-
-        Object.keys(detailedDetails).forEach(cat => {
-          detailedDetails[cat].sort((a, b) => b.value - a.value);
-        });
-
-        setDetailedCategoryData(detailedDetails);
+        setAllExpensesList(allExpenses);
 
       } catch (error) {
         console.error("Erro ao carregar dados do dashboard:", error);
@@ -201,6 +158,49 @@ export default function Dashboard() {
       </div>
     );
   }
+
+  const { categoryData, detailedCategoryData } = React.useMemo(() => {
+    const expensesByCategory: Record<string, number> = {};
+    const detailedDetails: Record<string, any[]> = {};
+    const colors = ["#3B82F6", "#8B5CF6", "#10B981", "#F59E0B", "#EC4899", "#6366F1", "#14B8A6", "#F43F5E", "#84CC16", "#EAB308"];
+
+    const filtered = allExpensesList.filter(e => {
+      const d = e.date?.seconds 
+        ? new Date(e.date.seconds * 1000) 
+        : (typeof e.date === 'string' ? new Date(e.date + 'T00:00:00') : new Date(e.date));
+      return isSameMonth(d, categoryMonth);
+    });
+
+    filtered.forEach(e => {
+      const parts = (e.category || "Outros").split(" > ");
+      const parent = parts[0];
+      const sub = parts[1] || parent;
+      
+      expensesByCategory[parent] = (expensesByCategory[parent] || 0) + (Number(e.amount) || 0);
+
+      if (!detailedDetails[parent]) detailedDetails[parent] = [];
+      const existing = detailedDetails[parent].find((s: any) => s.name === sub);
+      if (existing) {
+        existing.value += (Number(e.amount) || 0);
+      } else {
+        detailedDetails[parent].push({
+          name: sub,
+          value: (Number(e.amount) || 0),
+          color: colors[detailedDetails[parent].length % colors.length]
+        });
+      }
+    });
+
+    const catData = Object.entries(expensesByCategory)
+      .map(([name, value], i) => ({ name, value, color: colors[i % colors.length] }))
+      .sort((a, b) => b.value - a.value);
+
+    Object.keys(detailedDetails).forEach(cat => {
+      detailedDetails[cat].sort((a: any, b: any) => b.value - a.value);
+    });
+
+    return { categoryData: catData, detailedCategoryData: detailedDetails };
+  }, [allExpensesList, categoryMonth]);
 
   const profitLoss = (metrics.totalMarketValue - metrics.totalInvested) + metrics.totalDividends;
   const profitPercentage = metrics.totalInvested > 0 ? (profitLoss / metrics.totalInvested) * 100 : 0;
@@ -272,10 +272,13 @@ export default function Dashboard() {
         </Card>
 
         <Card className="col-span-3">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle>Gastos por Categoria</CardTitle>
+            <span className="text-xs font-semibold text-slate-500 capitalize bg-slate-100 px-2 py-1 rounded-md">
+              {format(categoryMonth, 'MMMM', { locale: ptBR })}
+            </span>
           </CardHeader>
-          <CardContent className="h-[300px] flex items-center justify-center">
+          <CardContent className="h-[280px] flex items-center justify-center">
             {categoryData.length > 0 ? (
               <div className="w-full h-full relative">
                 <ResponsiveContainer width="100%" height="100%">
@@ -322,7 +325,20 @@ export default function Dashboard() {
                   <span className="w-2 h-8 bg-primary rounded-full" />
                   Detalhamento de Gastos
                 </CardTitle>
-                <p className="text-slate-500 text-sm mt-1">Navegue pelas categorias para ver as subcategorias de cada uma.</p>
+                <div className="flex items-center gap-4 mt-3">
+                  <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl p-1 shadow-sm">
+                    <button className="p-1 hover:bg-slate-200 rounded-lg text-slate-600" onClick={() => setCategoryMonth(subMonths(categoryMonth, 1))}>
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <span className="text-sm font-semibold w-24 text-center capitalize text-slate-700">
+                      {format(categoryMonth, 'MMM yyyy', { locale: ptBR })}
+                    </span>
+                    <button className="p-1 hover:bg-slate-200 rounded-lg text-slate-600" onClick={() => setCategoryMonth(addMonths(categoryMonth, 1))}>
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <p className="text-slate-500 text-sm hidden sm:block">Navegue pelas categorias para ver as subcategorias de cada uma.</p>
+                </div>
               </div>
               <button 
                 onClick={() => setSelectedCategory(null)}
