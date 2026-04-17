@@ -179,11 +179,11 @@ export default function CriandoVidaPage() {
             <div className="grid grid-cols-2 gap-3">
               {gameData.achievements.length > 0
                 ? gameData.achievements.map((a) => (
-                    <AchievementSlot key={a.id} locked={false} />
-                  ))
+                  <AchievementSlot key={a.id} locked={false} />
+                ))
                 : Array.from({ length: 4 }).map((_, i) => (
-                    <AchievementSlot key={i} locked />
-                  ))}
+                  <AchievementSlot key={i} locked />
+                ))}
             </div>
           </CardContent>
         </Card>

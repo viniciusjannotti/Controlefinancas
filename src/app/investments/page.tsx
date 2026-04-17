@@ -55,6 +55,7 @@ import {
   deleteDividend
 } from "@/lib/firebase/db";
 import { fetchStockPrices } from "@/lib/stockApi";
+import { useGame } from "@/lib/game/GameContext";
 
 const assetTypes = ["Ações", "FIIs", "ETFs", "Fundos de Investimento", "Renda Fixa", "Crypto", "Outros"];
 const dividendTypes = ["Dividendo", "JCP", "Rendimento", "Outro"];
@@ -628,6 +629,7 @@ function DetailStat({ label, value, subtitle, color = "text-slate-900", bg = "bg
 // ──────────────────────────────────────
 function AddDividendForm({ asset, userId, onSave, onCancel }: any) {
   const [loading, setLoading] = useState(false);
+  const { onFinancialAction } = useGame();
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     amount: "",
@@ -641,6 +643,7 @@ function AddDividendForm({ asset, userId, onSave, onCancel }: any) {
     setLoading(true);
     try {
       await addDividend(userId, { ...formData, amount: Number(formData.amount) });
+      onFinancialAction("dividend_added");
       onSave();
     } catch (error) {
       alert("Erro ao salvar provento.");
@@ -682,6 +685,7 @@ function AddDividendForm({ asset, userId, onSave, onCancel }: any) {
 // ──────────────────────────────────────
 function AddInvestmentForm({ type, onSave, onCancel, editingInvestment, isContribution }: any) {
   const [loading, setLoading] = useState(false);
+  const { onFinancialAction } = useGame();
   const defaultForm = { name: "", ticker: "", assetType: "Ações", broker: "", quantity: "", purchasePrice: "", invested: "", currentValue: "", date: new Date().toISOString().split('T')[0] };
   const [formData, setFormData] = useState(defaultForm);
   React.useEffect(() => {
@@ -709,7 +713,10 @@ function AddInvestmentForm({ type, onSave, onCancel, editingInvestment, isContri
         currentValue: Number(formData.currentValue || manualInvested || (qty * pPrice))
       };
       if (editingInvestment && !isContribution) { await updateInvestment(editingInvestment.id, payload); }
-      else { await addInvestment(type, payload); }
+      else { 
+        await addInvestment(type, payload); 
+        onFinancialAction("investment_added");
+      }
       onSave();
     } catch (error) { alert("Erro ao salvar"); } finally { setLoading(false); }
   };

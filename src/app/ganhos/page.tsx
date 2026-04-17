@@ -44,6 +44,7 @@ import {
   getCeciliaClients 
 } from "@/lib/firebase/db";
 // import { toast } from "sonner"; 
+import { useGame } from "@/lib/game/GameContext";
 
 export default function EarningsPage() {
   const [activeTab, setActiveTab] = useState("maria");
@@ -312,6 +313,7 @@ function AddEarningsForm({
   const [clients, setClients] = useState<any[]>([]);
   const [newClient, setNewClient] = useState("");
   const [showAddClient, setShowAddClient] = useState(false);
+  const { onFinancialAction } = useGame();
 
   const fetchClients = React.useCallback(async () => {
     try {
@@ -398,6 +400,7 @@ function AddEarningsForm({
         await updateEarning(editingEarning.id, data);
       } else {
         await addEarning(type, data);
+        onFinancialAction("income_added");
       }
       setFormData(defaultForm);
       onSave();

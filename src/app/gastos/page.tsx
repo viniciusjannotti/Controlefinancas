@@ -41,6 +41,7 @@ import { Button, Input, Label, Table, TableHeader, TableBody, TableHead, TableRo
 import { formatCurrency, formatDate, cn } from "@/lib/utils";
 import { addExpense, getExpenses, updateExpense, deleteExpense } from "@/lib/firebase/db";
 // import { toast } from "sonner";
+import { useGame } from "@/lib/game/GameContext";
 
 // Hierarchical categories matching the household budget structure
 const categoryTree: { label: string; sub?: string[] }[] = [
@@ -380,6 +381,7 @@ function AddExpenseForm({
     method: "Cartão"
   });
   const [installments, setInstallments] = useState(1);
+  const { onFinancialAction } = useGame();
 
   React.useEffect(() => {
     if (editingExpense) {
@@ -463,6 +465,7 @@ function AddExpenseForm({
           };
           await addExpense(formData.userId, data);
         }
+        onFinancialAction("expense_created");
       }
 
       setFormData({
