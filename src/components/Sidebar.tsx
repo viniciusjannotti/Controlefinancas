@@ -13,6 +13,7 @@ import {
   Sprout,
   ChevronDown,
   ChevronRight,
+  Droplet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +30,7 @@ const bottomNav = [
 
 const gamesSubmenu = [
   { name: "Criando Vida", href: "/jogos/criando-vida", icon: Sprout },
+  { name: "Sociedade", href: "/jogos/sociedade", icon: Droplet },
 ];
 
 export function Sidebar() {
