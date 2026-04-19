@@ -20,9 +20,16 @@ const inlineStyles = `
     0%, 100% { border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; }
     50% { border-radius: 40% 40% 60% 60% / 50% 50% 50% 50%; }
   }
+  @keyframes blob-poke {
+    0% { transform: scale(1); }
+    25% { transform: scale(0.9) translateY(10px) rotate(-3deg); }
+    50% { transform: scale(1.05) translateY(-5px) rotate(3deg); }
+    100% { transform: scale(1); }
+  }
   
   .anim-eat { animation: blob-pulse 0.4s ease-in-out; }
   .anim-explore { animation: blob-shake 0.4s ease-in-out; }
+  .anim-poke { animation: blob-poke 0.3s ease-in-out; }
   .anim-idle { animation: blob-happy 4s infinite ease-in-out; }
 
   /* Premium scrollbar for logs */
@@ -464,8 +471,9 @@ export default function SociedadePage() {
             {/* Avatar Central (Blob) */}
             <div className="relative group perspective-1000">
               <div 
+                onClick={() => triggerAnim("anim-poke")}
                 className={cn(
-                  "w-48 h-48 sm:w-56 sm:h-56 rounded-full flex items-center justify-center text-6xl shadow-2xl transition-all duration-700",
+                  "w-48 h-48 sm:w-56 sm:h-56 rounded-full flex items-center justify-center text-6xl shadow-2xl transition-all duration-700 cursor-pointer active:scale-95",
                   blobColor,
                   animClass
                 )}
