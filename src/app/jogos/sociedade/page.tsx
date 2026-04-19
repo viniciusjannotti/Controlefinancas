@@ -276,6 +276,8 @@ export default function SociedadePage() {
       lastSatiety: satiety,
       lastUpdate
     }));
+  }, [satiety]);
+
   // Atualizar localStorage para Hidden Exp e HasTransitioned
   useEffect(() => {
     if (typeof window === "undefined") return;
