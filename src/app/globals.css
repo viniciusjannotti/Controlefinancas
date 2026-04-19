@@ -115,3 +115,22 @@
 .card-shadow {
   @apply shadow-[0_8px_30px_rgb(0,0,0,0.04)];
 }
+
+@keyframes sway {
+  0%, 100% { transform: rotate(-2deg) skewX(-1deg); }
+  50% { transform: rotate(3deg) skewX(2deg); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.animate-sway {
+  animation: sway 4s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+

@@ -66,17 +66,57 @@ function PlantStage({ level }: { level: number }) {
   const stage = stages[Math.min(level - 1, stages.length - 1)];
 
   return (
-    <div className="flex flex-col items-center justify-center gap-4 py-8">
-      <div className="text-8xl select-none animate-bounce" style={{ animationDuration: "3s" }}>
-        {stage.emoji}
+    <div className="relative w-full h-[360px] rounded-3xl overflow-hidden shadow-inner border border-emerald-100/50 bg-slate-900">
+      {/* 1. Céu (Sky) - Sunset style for premium look */}
+      <div className="absolute inset-0 bg-gradient-to-b from-blue-400 via-orange-200 to-amber-100" />
+
+      {/* 2. Sol/Luz ao fundo (Distant Light) */}
+      <div className="absolute top-10 left-1/4 w-32 h-32 bg-yellow-200/40 rounded-full blur-3xl animate-pulse" />
+
+      {/* 3. Montanhas (Mountains) - Layered silhouette */}
+      <svg
+        className="absolute bottom-24 left-0 w-full h-40 text-slate-500/20"
+        viewBox="0 0 1000 100"
+        preserveAspectRatio="none"
+      >
+        <path d="M0,100 L0,80 L150,40 L300,70 L500,20 L750,80 L900,30 L1000,70 L1000,100 Z" fill="currentColor" />
+        <path d="M0,100 L0,90 L200,60 L400,85 L600,45 L850,90 L1000,65 L1000,100 Z" fill="currentColor" opacity="0.5" />
+      </svg>
+
+      {/* 4. Savana (Savanna Ground) - Textured golden plain */}
+      <div className="absolute bottom-0 left-0 w-full h-36 bg-gradient-to-t from-orange-300 via-amber-200 to-amber-100/20">
+        {/* Subtle grass particles or texture could go here in future */}
+        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_50%_0%,transparent_0%,rgba(0,0,0,0.2)_100%)]" />
       </div>
-      <p className="text-emerald-700 font-bold text-lg">{stage.label}</p>
-      <p className="text-xs text-emerald-600 max-w-xs text-center opacity-80">
-        Continue registrando seus ganhos e gastos para fazer sua planta crescer!
-      </p>
+
+      {/* 5. Planta com brisa (Plant with breeze) */}
+      <div className="absolute bottom-14 left-1/2 -translate-x-1/2 flex flex-col items-center z-10">
+        <div className="relative">
+          {/* The Plant Emoji - Swaying! */}
+          <div className="text-9xl select-none animate-sway origin-bottom drop-shadow-xl filter drop-shadow-emerald-500/20">
+            {stage.emoji}
+          </div>
+          {/* Shadow on ground */}
+          <div className="w-20 h-4 bg-black/5 rounded-[100%] blur-[4px] mt-2 mx-auto" />
+        </div>
+        
+        <div className="mt-8 text-center">
+          <p className="text-emerald-900 font-black text-2xl drop-shadow-sm tracking-tight">{stage.label}</p>
+          <div className="inline-flex items-center gap-1.5 bg-white/50 backdrop-blur-md px-4 py-1.5 rounded-full mt-3 border border-white/40 shadow-sm transition-all hover:bg-white/70">
+            <Sparkles className="w-4 h-4 text-emerald-600" />
+            <span className="text-xs font-bold text-emerald-800 uppercase tracking-widest">
+              Fase {level}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Feature placeholders for future additions */}
+      {/* <div className="absolute bottom-10 left-10 w-24 h-8 bg-blue-400/20 rounded-full blur-md opacity-0 group-hover:opacity-100" />  LAKE */}
     </div>
   );
 }
+
 
 // ─── Category color helpers ───────────────────────────────────────────────────
 function achievementCategoryBadge(cat: string) {
@@ -419,18 +459,26 @@ export default function CriandoVidaPage() {
         {/* Main area: plant + missions */}
         <div className="grid gap-6 lg:grid-cols-3">
 
-          {/* Plant visual */}
-          <Card className="lg:col-span-2 bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-100">
+          {/* Plant visual — main area */}
+          <Card className="lg:col-span-2 bg-white/50 backdrop-blur-sm border-emerald-100 shadow-xl shadow-emerald-900/5">
             <CardHeader>
-              <CardTitle className="text-emerald-800">Sua Planta</CardTitle>
-              <CardDescription className="text-emerald-600">
-                Modo: {gameData.gameMode} · Progresso visual do seu nível
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-emerald-900">Sua Jornada</CardTitle>
+                  <CardDescription className="text-emerald-700/60 font-medium">
+                    Explorando a savana financeira · Nível {gameData.level}
+                  </CardDescription>
+                </div>
+                <div className="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center text-emerald-600">
+                  <TrendingUp className="w-6 h-6" />
+                </div>
+              </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-6 pb-6 pt-0">
               <PlantStage level={gameData.level} />
             </CardContent>
           </Card>
+
 
           {/* Daily Missions */}
           <Card className="flex flex-col">
