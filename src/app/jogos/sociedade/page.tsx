@@ -74,7 +74,7 @@ function ProgressBar({
       <div className="h-3 bg-slate-100 rounded-full overflow-hidden shadow-inner">
         <div 
           className={cn("h-full rounded-full transition-all duration-500 relative", isLow ? "bg-red-500" : colorClass)} 
-          style={{ width: \`\${percentage}%\` }}
+          style={{ width: `${percentage}%` }}
         >
           <div className="absolute inset-0 bg-white/20 opacity-0 hover:opacity-100 transition-opacity" />
         </div>
