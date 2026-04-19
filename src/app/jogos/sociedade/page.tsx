@@ -182,6 +182,85 @@ export default function SociedadePage() {
   const [animClass, setAnimClass] = useState<string>("anim-idle");
   const [rulesOpen, setRulesOpen] = useState(false);
 
+  // ─── Lógica de Decaimento Passivo (1 a cada 15 mins) ──────────────────────
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const STORAGE_KEY = "sociedade_satiety_data";
+    const FIFTEEN_MINS_MS = 15 * 60 * 1000;
+
+    const loadPassiveDrain = () => {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        try {
+          const { lastSatiety, lastUpdate } = JSON.parse(stored);
+          const now = Date.now();
+          const elapsed = now - lastUpdate;
+          const ticksMissed = Math.floor(elapsed / FIFTEEN_MINS_MS);
+          
+          if (ticksMissed > 0) {
+            const newSatiety = Math.max(0, lastSatiety - ticksMissed);
+            setSatiety(newSatiety);
+            
+            // Re-sync timestamp to the latest clean tick
+            const leftoverMs = elapsed % FIFTEEN_MINS_MS;
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({
+              lastSatiety: newSatiety,
+              lastUpdate: now - leftoverMs, 
+            }));
+            
+            addLog(`O tempo passou. Organismo consumiu ${lastSatiety - newSatiety} de saciedade enquanto você esteve fora.`, "negative");
+          } else {
+            setSatiety(lastSatiety);
+          }
+        } catch (e) {}
+      } else {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          lastSatiety: 80,
+          lastUpdate: Date.now()
+        }));
+      }
+    };
+
+    loadPassiveDrain();
+
+    const interval = setInterval(() => {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        try {
+          const { lastSatiety, lastUpdate } = JSON.parse(stored);
+          const now = Date.now();
+          const elapsed = now - lastUpdate;
+          if (elapsed >= FIFTEEN_MINS_MS) {
+             const newSatiety = Math.max(0, lastSatiety - 1);
+             setSatiety(newSatiety);
+             localStorage.setItem(STORAGE_KEY, JSON.stringify({
+               lastSatiety: newSatiety,
+               lastUpdate: now
+             }));
+          }
+        } catch(e){}
+      }
+    }, 60000); // checks every minute
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Update localStorage whenever satiety changes manually (like eating)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const STORAGE_KEY = "sociedade_satiety_data";
+    const stored = localStorage.getItem(STORAGE_KEY);
+    let lastUpdate = Date.now();
+    if (stored) {
+      try { lastUpdate = JSON.parse(stored).lastUpdate; } catch (e) {}
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      lastSatiety: satiety,
+      lastUpdate
+    }));
+  }, [satiety]);
+
   // Gatilho de animação
   const triggerAnim = (animationName: string) => {
     setAnimClass(animationName);
