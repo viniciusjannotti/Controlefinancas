@@ -48,6 +48,15 @@ interface LogEntry {
   timestamp: Date;
 }
 
+const getRank = (exp: number) => {
+  if (exp < 11) return { title: "Inexperiente", foodChance: 0.40, phaseChance: 0 };
+  if (exp < 26) return { title: "Curioso", foodChance: 0.45, phaseChance: 0 };
+  if (exp < 51) return { title: "Observador", foodChance: 0.50, phaseChance: 0.01 };
+  if (exp < 101) return { title: "Explorador", foodChance: 0.55, phaseChance: 0.03 };
+  if (exp < 201) return { title: "Vivido", foodChance: 0.60, phaseChance: 0.06 };
+  return { title: "Experiente", foodChance: 0.65, phaseChance: 0.10 };
+};
+
 // ─── Componentes Menores ─────────────────────────────────────────────────────
 
 function ProgressBar({ 
@@ -122,7 +131,7 @@ function RulesModal({ onClose }: { onClose: () => void }) {
             <div className="flex items-start gap-2 bg-indigo-50 border border-indigo-100 rounded-2xl p-4 text-sm text-indigo-800">
               <Info className="w-5 h-5 mt-0.5 shrink-0" />
               <span>
-                Esta é a <b>Fase 1: Sobrevivência</b>. O objetivo é manter sua saciedade alta utilizando a <b>Energia</b> enviada por fontes externas (seu progresso financeiro).
+                Esta é a <b>Fase 1: Sobrevivência</b>. O objetivo é manter sua saciedade alta utilizando a <b>Energia</b> enviada por fontes externas (seu progresso financeiro). Múltiplas explorações secretamente desbloqueiam sabedoria para evoluir. Cuidado: chegar a Zero de Saciedade apagará todos os instintos adquiridos de seu organismo.
               </span>
             </div>
           </div>
@@ -146,8 +155,8 @@ function RulesModal({ onClose }: { onClose: () => void }) {
                   <Search className="w-5 h-5" />
                 </span>
                 <div className="flex-1">
-                  <p className="font-bold text-indigo-900 text-sm">Explorar</p>
-                  <p className="text-xs text-indigo-700/80">Custo: 3 Energia. Uma ação arriscada para tentar encontrar bônus sem usar muita energia. Pode encontrar recursos, não encontrar nada, ou sofrer danos.</p>
+                  <p className="font-bold text-indigo-900 text-sm">Explorar (A chave da Evolução)</p>
+                  <p className="text-xs text-indigo-700/80">Custo: 3 Energia. Acumula conhecimento oculto. Pode encontrar bônus ou danos curtos, e aumenta globalmente suas chances de sobrevivência a longo prazo.</p>
                 </div>
               </div>
 
@@ -172,12 +181,13 @@ function RulesModal({ onClose }: { onClose: () => void }) {
 
 // ─── Página Principal ────────────────────────────────────────────────────────
 export default function SociedadePage() {
-  // Estado local para mockar energia externa (Fase 1: Sobrevivência)
   const currentPhase: GamePhase = "PHASE_1_SURVIVAL";
 
   // Estado central do jogo
   const [energy, setEnergy] = useState<number>(50); // Mock da External Energy
   const [satiety, setSatiety] = useState<number>(80);
+  const [hiddenExp, setHiddenExp] = useState<number>(0);
+  const [hasTransitioned, setHasTransitioned] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([{ id: 'init', msg: "Uma nova forma de vida despertou.", type: "neutral", timestamp: new Date() }]);
   const [animClass, setAnimClass] = useState<string>("anim-idle");
   const [rulesOpen, setRulesOpen] = useState(false);
@@ -259,7 +269,28 @@ export default function SociedadePage() {
       lastSatiety: satiety,
       lastUpdate
     }));
-  }, [satiety]);
+  // Atualizar localStorage para Hidden Exp e HasTransitioned
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const storedExp = localStorage.getItem("sociedade_hid_exp");
+    const storedWin = localStorage.getItem("sociedade_win");
+    if (storedExp) setHiddenExp(Number(storedExp));
+    if (storedWin === "true") setHasTransitioned(true);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem("sociedade_hid_exp", hiddenExp.toString());
+  }, [hiddenExp]);
+
+  useEffect(() => {
+    if (satiety === 0) {
+      if (hiddenExp > 0) {
+        setHiddenExp(0);
+        addLog("O organismo feneceu e perdeu toda a sua sabedoria acumulada. Retornando ao estado primitivo Inexperiente.", "negative");
+      }
+    }
+  }, [satiety, hiddenExp]);
 
   // Gatilho de animação
   const triggerAnim = (animationName: string) => {
@@ -297,19 +328,39 @@ export default function SociedadePage() {
     setEnergy(e => e - 3);
     triggerAnim("anim-explore");
 
-    // Sorteio Simples (RNG)
+    // XP Gain and Rank computation
+    const oldRankTitle = getRank(hiddenExp).title;
+    const newExp = hiddenExp + 1;
+    setHiddenExp(newExp);
+    const newRank = getRank(newExp);
+
+    if (newRank.title !== oldRankTitle) {
+      addLog(`✨ Brilhante! O organismo se tornou um ser: ${newRank.title}. Suas chances em exploração aumentaram.`, "positive");
+    }
+
+    // Phase transition roll
+    if (newRank.phaseChance > 0) {
+      if (Math.random() < newRank.phaseChance) {
+        setHasTransitioned(true);
+        if (typeof window !== "undefined") localStorage.setItem("sociedade_win", "true");
+        return; 
+      } else if (Math.random() < 0.25) { // Indicadores narrativos
+        addLog("O ser começa a entender estruturas complexas ao seu redor. A evolução parece possível...", "neutral");
+      }
+    }
+
+    // Sorteio Simples Escalonado
     const roll = Math.random();
-    if (roll < 0.4) {
-      // 40% - Comida achada
+    if (roll < newRank.foodChance) {
       setSatiety(s => Math.min(100, s + 10));
-      addLog("Encontrou nutrientes durante a exploração!", "positive");
-    } else if (roll > 0.8) {
-      // 20% - Perigo/Perda
+      addLog("Graças à sua percepção, encontrou nutrientes de qualidade!", "positive");
+    } else if (roll > 0.85) {
+      // 15% Dano - Acontece quando o roll está no top 15% (ex: > 0.85). Mantém-se estatisticamente em ~15% sempre.
       setSatiety(s => Math.max(0, s - 10));
-      addLog("Esbarrou em um obstáculo duro. Perdeu nutrientes.", "negative");
+      addLog("Esbarrou em um obstáculo duro ou predador. Perdeu energia vital.", "negative");
     } else {
-      // 40% - Nada
-      addLog("Explorou bastante, mas não encontrou nada de útil.", "neutral");
+      // O meio do espectro 
+      addLog("Explorou bastante, estudou o ambiente, mas não encontrou nutrientes.", "neutral");
     }
   };
 
@@ -336,6 +387,27 @@ export default function SociedadePage() {
     blobFace = "😵";
   }
 
+  // Render da Fase 2 bloqueada (Vitória Temporal)
+  if (hasTransitioned) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] animate-in slide-in-from-bottom-6 fade-in duration-1000 p-6">
+        <Card className="max-w-xl text-center bg-gradient-to-br from-indigo-900 via-indigo-950 to-slate-900 border-indigo-500/50 shadow-[0_0_100px_rgba(79,70,229,0.3)] p-12 rounded-[2.5rem] text-white">
+          <Sparkles className="w-20 h-20 text-indigo-300 mx-auto mb-8 animate-pulse drop-shadow-lg" />
+          <h1 className="text-4xl font-black mb-4 tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-indigo-200 to-white">
+            A Sociedade Desperta
+          </h1>
+          <p className="text-indigo-200/90 leading-relaxed text-lg mb-8 font-medium">
+            Seu organismo atingiu a capacidade cognitiva e comportamental necessária para transcender a mera biologia de sobrevivência. Os laços começam a se formar.
+          </p>
+          <div className="inline-block bg-black/30 backdrop-blur-md px-6 py-4 rounded-2xl border border-white/5 font-mono text-sm text-indigo-300 shadow-inner">
+            FASE 2: CONSTRUÇÃO SOCIAL <br />
+            <span className="text-xs text-indigo-400 mt-1 block">(Em desenvolvimento)</span>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500 max-w-5xl mx-auto pb-10">
       <style dangerouslySetInnerHTML={{ __html: inlineStyles }} />
@@ -353,6 +425,10 @@ export default function SociedadePage() {
             <p className="text-slate-300 font-medium text-lg mt-1">Evolua sua célula primordial rumo a uma civilização avançada.</p>
           </div>
           <div className="flex items-center gap-3">
+            <div className="bg-indigo-900/40 backdrop-blur-md px-4 py-2 flex items-center gap-2 rounded-full border border-indigo-500/30 shadow-sm">
+              <span className="text-[11px] text-indigo-300 font-bold uppercase tracking-wider">Sabedoria:</span>
+              <span className="text-sm font-black tracking-widest text-indigo-100">{getRank(hiddenExp).title}</span>
+            </div>
             <div className="bg-white/10 backdrop-blur-md px-5 py-2.5 rounded-full border border-white/20">
               <span className="text-sm font-bold tracking-widest text-indigo-200">FASE 1: SOBREVIVÊNCIA</span>
             </div>
