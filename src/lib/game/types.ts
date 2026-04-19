@@ -36,9 +36,9 @@ export const defaultGameData: GameData = {
   metadata: {},
 };
 
-// XP required to reach each level (simple formula: level * 100)
+// XP required to reach each level (simple formula: level * 1000)
 export function xpForNextLevel(level: number): number {
-  return level * 100;
+  return level * 1000;
 }
 
 // Calculate new level based on total XP
