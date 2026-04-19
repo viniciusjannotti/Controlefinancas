@@ -156,7 +156,6 @@ function RulesModal({ onClose }: { onClose: () => void }) {
                   <p className="text-xs text-slate-500">Custo: 5 Energia. Regenera 20 pontos de saciedade garantidos.</p>
                 </div>
               </div>
-              
               <div className="flex items-center gap-4 p-4 rounded-2xl border border-slate-100 bg-indigo-50/50">
                 <span className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
                   <Search className="w-5 h-5" />
@@ -164,16 +163,6 @@ function RulesModal({ onClose }: { onClose: () => void }) {
                 <div className="flex-1">
                   <p className="font-bold text-indigo-900 text-sm">Explorar (A chave da Evolução)</p>
                   <p className="text-xs text-indigo-700/80">Custo: 3 Energia. Acumula conhecimento oculto. Pode encontrar bônus ou danos curtos, e aumenta globalmente suas chances de sobrevivência a longo prazo.</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4 p-4 rounded-2xl border border-slate-100 bg-slate-50">
-                <span className="w-10 h-10 rounded-xl bg-slate-200 text-slate-600 flex items-center justify-center shrink-0">
-                  <Coffee className="w-5 h-5" />
-                </span>
-                <div className="flex-1">
-                  <p className="font-bold text-slate-800 text-sm">Descansar</p>
-                  <p className="text-xs text-slate-500">Passa o turno sem custo de energia. Recupera 2 pontos de energia mas drena 2 de saciedade pelo tempo gasto.</p>
                 </div>
               </div>
             </div>
@@ -203,7 +192,7 @@ export default function SociedadePage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const STORAGE_KEY = "sociedade_satiety_data";
+    const STORAGE_KEY = "sociedade_satiety_v2";
     const FIFTEEN_MINS_MS = 15 * 60 * 1000;
 
     const loadPassiveDrain = () => {
@@ -266,7 +255,7 @@ export default function SociedadePage() {
   // Update localStorage whenever satiety changes manually (like eating)
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const STORAGE_KEY = "sociedade_satiety_data";
+    const STORAGE_KEY = "sociedade_satiety_v2";
     const stored = localStorage.getItem(STORAGE_KEY);
     let lastUpdate = Date.now();
     if (stored) {
@@ -281,15 +270,15 @@ export default function SociedadePage() {
   // Atualizar localStorage para Hidden Exp e HasTransitioned
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const storedExp = localStorage.getItem("sociedade_hid_exp");
-    const storedWin = localStorage.getItem("sociedade_win");
+    const storedExp = localStorage.getItem("sociedade_hid_v2");
+    const storedWin = localStorage.getItem("sociedade_win_v2");
     if (storedExp) setHiddenExp(Number(storedExp));
     if (storedWin === "true") setHasTransitioned(true);
   }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    localStorage.setItem("sociedade_hid_exp", hiddenExp.toString());
+    localStorage.setItem("sociedade_hid_v2", hiddenExp.toString());
   }, [hiddenExp]);
 
   useEffect(() => {
@@ -351,7 +340,7 @@ export default function SociedadePage() {
     if (newRank.phaseChance > 0) {
       if (Math.random() < newRank.phaseChance) {
         setHasTransitioned(true);
-        if (typeof window !== "undefined") localStorage.setItem("sociedade_win", "true");
+        if (typeof window !== "undefined") localStorage.setItem("sociedade_win_v2", "true");
         return; 
       } else if (Math.random() < 0.25) { // Indicadores narrativos
         addLog("O ser começa a entender estruturas complexas ao seu redor. A evolução parece possível...", "neutral");
@@ -371,14 +360,6 @@ export default function SociedadePage() {
       // O meio do espectro 
       addLog("Explorou bastante, estudou o ambiente, mas não encontrou nutrientes.", "neutral");
     }
-  };
-
-  const handleRest = () => {
-    // Descansar não custa nada, recupera um pouco de energia leve (simulando passar de turno/dias)
-    setEnergy(e => Math.min(100, e + 2));
-    setSatiety(s => Math.max(0, s - 2)); // Gasta pouco de fome por descansar
-    addLog("O ser decidiu descansar e se sentiu levemente recarregado.", "neutral");
-    triggerAnim("anim-idle"); // apenas para dar refresh
   };
 
   // ─── Variáveis Visuais baseadas no Estado ──────────────────────────────────
@@ -555,24 +536,6 @@ export default function SociedadePage() {
                 </div>
                 <div className="text-xs font-black text-amber-600 bg-amber-100 px-3 py-1.5 rounded-full flex items-center gap-1 group-hover:bg-amber-200 transition-colors">
                   <Zap className="w-3 h-3" /> -3
-                </div>
-              </button>
-
-              <button 
-                onClick={handleRest}
-                className="w-full flex items-center justify-between p-4 rounded-2xl bg-slate-50 hover:bg-slate-100 border-2 border-slate-100 hover:border-slate-300 transition-all group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-slate-200 text-slate-600 rounded-xl flex items-center justify-center shrink-0">
-                    <Coffee className="w-5 h-5" />
-                  </div>
-                  <div className="text-left">
-                    <p className="font-bold text-slate-800">Descansar</p>
-                    <p className="text-xs text-slate-500">Passar o tempo (+EN)</p>
-                  </div>
-                </div>
-                <div className="text-xs font-black text-slate-500 bg-slate-200 px-3 py-1.5 rounded-full flex items-center gap-1 group-hover:bg-slate-300 transition-colors">
-                  <Zap className="w-3 h-3" /> 0
                 </div>
               </button>
             </CardContent>
