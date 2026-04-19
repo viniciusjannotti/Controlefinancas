@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
 import { cn } from "@/lib/utils";
-import { Zap, Search, Coffee, Utensils, Droplet, Sparkles, Activity } from "lucide-react";
+import { Zap, Search, Coffee, Utensils, Droplet, Sparkles, Activity, BookOpen, X, Info } from "lucide-react";
 
 // ─── Estilos e Keyframes Locais ────────────────────────────────────────────────
 const inlineStyles = `
@@ -83,6 +83,93 @@ function ProgressBar({
   );
 }
 
+// ─── Modal de Regras ─────────────────────────────────────────────────────────
+function RulesModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+
+      {/* Modal */}
+      <div className="relative w-full max-w-2xl max-h-[85vh] flex flex-col bg-white rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+
+        {/* Header gradient */}
+        <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-600 p-6 text-white">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                <BookOpen className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-xl font-black">Regras de Sociedade</h2>
+                <p className="text-indigo-100 text-sm">Entenda como manter seu organismo vivo</p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="w-9 h-9 rounded-xl bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          
+          <div className="space-y-3">
+            <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 border-b border-slate-100 pb-2">O Ciclo da Vida</h3>
+            <div className="flex items-start gap-2 bg-indigo-50 border border-indigo-100 rounded-2xl p-4 text-sm text-indigo-800">
+              <Info className="w-5 h-5 mt-0.5 shrink-0" />
+              <span>
+                Esta é a <b>Fase 1: Sobrevivência</b>. O objetivo é manter sua saciedade alta utilizando a <b>Energia</b> enviada por fontes externas (seu progresso financeiro).
+              </span>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 border-b border-slate-100 pb-2">Ações Vitais</h3>
+            
+            <div className="space-y-2">
+              <div className="flex items-center gap-4 p-4 rounded-2xl border border-slate-100 bg-slate-50">
+                <span className="w-10 h-10 rounded-xl bg-green-100 text-green-600 flex items-center justify-center shrink-0">
+                  <Utensils className="w-5 h-5" />
+                </span>
+                <div className="flex-1">
+                  <p className="font-bold text-slate-800 text-sm">Comer</p>
+                  <p className="text-xs text-slate-500">Custo: 5 Energia. Regenera 20 pontos de saciedade garantidos.</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-4 p-4 rounded-2xl border border-slate-100 bg-indigo-50/50">
+                <span className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
+                  <Search className="w-5 h-5" />
+                </span>
+                <div className="flex-1">
+                  <p className="font-bold text-indigo-900 text-sm">Explorar</p>
+                  <p className="text-xs text-indigo-700/80">Custo: 3 Energia. Uma ação arriscada para tentar encontrar bônus sem usar muita energia. Pode encontrar recursos, não encontrar nada, ou sofrer danos.</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4 p-4 rounded-2xl border border-slate-100 bg-slate-50">
+                <span className="w-10 h-10 rounded-xl bg-slate-200 text-slate-600 flex items-center justify-center shrink-0">
+                  <Coffee className="w-5 h-5" />
+                </span>
+                <div className="flex-1">
+                  <p className="font-bold text-slate-800 text-sm">Descansar</p>
+                  <p className="text-xs text-slate-500">Passa o turno sem custo de energia. Recupera 2 pontos de energia mas drena 2 de saciedade pelo tempo gasto.</p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Página Principal ────────────────────────────────────────────────────────
 export default function SociedadePage() {
   // Estado local para mockar energia externa (Fase 1: Sobrevivência)
@@ -93,6 +180,7 @@ export default function SociedadePage() {
   const [satiety, setSatiety] = useState<number>(80);
   const [logs, setLogs] = useState<LogEntry[]>([{ id: 'init', msg: "Uma nova forma de vida despertou.", type: "neutral", timestamp: new Date() }]);
   const [animClass, setAnimClass] = useState<string>("anim-idle");
+  const [rulesOpen, setRulesOpen] = useState(false);
 
   // Gatilho de animação
   const triggerAnim = (animationName: string) => {
@@ -185,8 +273,18 @@ export default function SociedadePage() {
             </h1>
             <p className="text-slate-300 font-medium text-lg mt-1">Evolua sua célula primordial rumo a uma civilização avançada.</p>
           </div>
-          <div className="bg-white/10 backdrop-blur-md px-5 py-2.5 rounded-full border border-white/20">
-            <span className="text-sm font-bold tracking-widest text-indigo-200">FASE 1: SOBREVIVÊNCIA</span>
+          <div className="flex items-center gap-3">
+            <div className="bg-white/10 backdrop-blur-md px-5 py-2.5 rounded-full border border-white/20">
+              <span className="text-sm font-bold tracking-widest text-indigo-200">FASE 1: SOBREVIVÊNCIA</span>
+            </div>
+            {/* Legend Button */}
+            <button
+              onClick={() => setRulesOpen(true)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-indigo-500 hover:bg-indigo-400 text-white font-bold text-sm shadow-lg transition-all"
+            >
+              <BookOpen className="w-4 h-4" />
+              Regras
+            </button>
           </div>
         </div>
       </div>
@@ -348,6 +446,9 @@ export default function SociedadePage() {
 
         </div>
       </div>
+
+      {/* Rules Modal */}
+      {rulesOpen && <RulesModal onClose={() => setRulesOpen(false)} />}
     </div>
   );
 }
