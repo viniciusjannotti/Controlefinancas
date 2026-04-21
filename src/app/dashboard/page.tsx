@@ -51,6 +51,12 @@ export default function Dashboard() {
   const [categoryMonth, setCategoryMonth] = useState<Date>(new Date());
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [historyTopic, setHistoryTopic] = useState<'Ganhos' | 'Gastos'>('Gastos');
+  const [historyCategory, setHistoryCategory] = useState<string>('Todas');
+  const [historySubcategory, setHistorySubcategory] = useState<string>('Todas');
+  const [allEarningsList, setAllEarningsList] = useState<any[]>([]);
+
   useEffect(() => {
     async function fetchData() {
       setLoading(true);
@@ -140,6 +146,7 @@ export default function Dashboard() {
 
         setMonthlyData(last6Months);
         setAllExpensesList(allExpenses);
+        setAllEarningsList(allEarnings);
 
       } catch (error) {
         console.error("Erro ao carregar dados do dashboard:", error);
@@ -193,6 +200,107 @@ export default function Dashboard() {
 
     return { categoryData: catData, detailedCategoryData: detailedDetails };
   }, [allExpensesList, categoryMonth]);
+
+  const { availableYears, availableCategories, availableSubcategories, historyMontlyData } = React.useMemo(() => {
+    const sourceData = historyTopic === 'Gastos' ? allExpensesList : allEarningsList;
+    
+    const yearsSet = new Set<number>();
+    allExpensesList.forEach(e => {
+       const d = e.date?.seconds ? new Date(e.date.seconds * 1000) : new Date(e.date + 'T00:00:00');
+       yearsSet.add(d.getFullYear());
+    });
+    allEarningsList.forEach(e => {
+       const d = e.date?.seconds ? new Date(e.date.seconds * 1000) : new Date(e.date + 'T00:00:00');
+       yearsSet.add(d.getFullYear());
+    });
+    
+    const years = Array.from(yearsSet).sort((a, b) => b - a);
+    if (years.length === 0) years.push(new Date().getFullYear());
+
+    const catSet = new Set<string>();
+    const subSet = new Set<string>();
+
+    sourceData.forEach(e => {
+       if (historyTopic === 'Gastos') {
+          const parts = (e.category || "Outros").split(" > ");
+          catSet.add(parts[0]);
+          if (historyCategory === 'Todas' || historyCategory === parts[0]) {
+             if (parts[1]) subSet.add(parts[1]);
+          }
+       } else {
+          const person = e.userId === 'vinicius' ? 'Vinícius' : (e.userId === 'maria' ? 'Maria' : 'Outros');
+          catSet.add(person);
+          if (historyCategory === 'Todas' || historyCategory === person) {
+             const sub = e.name || "Não Identificado";
+             if (sub) subSet.add(sub);
+          }
+       }
+    });
+
+    const monthsData = Array.from({ length: 12 }, (_, i) => {
+        return {
+           monthIndex: i,
+           name: format(new Date(selectedYear, i, 1), 'MMMM', { locale: ptBR }),
+           total: 0,
+           previousTotal: 0
+        };
+    });
+
+    sourceData.forEach(e => {
+       const d = e.date?.seconds ? new Date(e.date.seconds * 1000) : (typeof e.date === 'string' ? new Date(e.date + 'T00:00:00') : new Date(e.date));
+       
+       const eYear = d.getFullYear();
+       const eMonth = d.getMonth();
+
+       if (eYear !== selectedYear && eYear !== selectedYear - 1) return;
+
+       let matchesCat = true;
+       let matchesSub = true;
+
+       if (historyTopic === 'Gastos') {
+          const parts = (e.category || "Outros").split(" > ");
+          const parent = parts[0];
+          const sub = parts[1] || parent;
+
+          if (historyCategory !== 'Todas' && parent !== historyCategory) matchesCat = false;
+          if (historyCategory !== 'Todas' && historySubcategory !== 'Todas' && sub !== historySubcategory) matchesSub = false;
+       } else {
+          const person = e.userId === 'vinicius' ? 'Vinícius' : (e.userId === 'maria' ? 'Maria' : 'Outros');
+          const sub = e.name || "Não Identificado";
+
+          if (historyCategory !== 'Todas' && person !== historyCategory) matchesCat = false;
+          if (historyCategory !== 'Todas' && historySubcategory !== 'Todas' && sub !== historySubcategory) matchesSub = false;
+       }
+
+       if (matchesCat && matchesSub) {
+          if (eYear === selectedYear) {
+             monthsData[eMonth].total += (Number(e.amount) || 0);
+          } else if (eYear === selectedYear - 1 && eMonth === 11) {
+             monthsData[0].previousTotal += (Number(e.amount) || 0);
+          }
+       }
+    });
+
+    for (let i = 1; i < 12; i++) {
+        monthsData[i].previousTotal = monthsData[i - 1].total;
+    }
+
+    return {
+       availableYears: years,
+       availableCategories: ['Todas', ...Array.from(catSet).sort()],
+       availableSubcategories: ['Todas', ...Array.from(subSet).sort()],
+       historyMontlyData: monthsData
+    };
+  }, [allExpensesList, allEarningsList, historyTopic, historyCategory, historySubcategory, selectedYear]);
+
+  useEffect(() => {
+    setHistoryCategory('Todas');
+    setHistorySubcategory('Todas');
+  }, [historyTopic]);
+
+  useEffect(() => {
+    setHistorySubcategory('Todas');
+  }, [historyCategory]);
 
   const profitLoss = (metrics.totalMarketValue - metrics.totalInvested) + metrics.totalDividends;
   const profitPercentage = metrics.totalInvested > 0 ? (profitLoss / metrics.totalInvested) * 100 : 0;
@@ -255,7 +363,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={monthlyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <BarChart data={monthlyData.map(m => ({...m, saldo: m.earnings - m.expenses}))} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#94A3B8" }} dy={10} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#94A3B8" }} />
@@ -266,6 +374,7 @@ export default function Dashboard() {
                 />
                 <Bar dataKey="earnings" name="Ganhos" fill="#10B981" radius={[4, 4, 0, 0]} barSize={20} />
                 <Bar dataKey="expenses" name="Gastos" fill="#EF4444" radius={[4, 4, 0, 0]} barSize={20} />
+                <Bar dataKey="saldo" name="Saldo" fill="#3B82F6" radius={[4, 4, 0, 0]} barSize={20} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -429,9 +538,44 @@ export default function Dashboard() {
 
       {/* Monthly History Block */}
       <Card className="w-full">
-        <CardHeader>
-          <CardTitle className="text-xl">Histórico Mensal Detalhado</CardTitle>
-          <p className="text-slate-500 text-sm">Acompanhe a evolução de ganhos e gastos mês a mês para controle ao longo do tempo.</p>
+        <CardHeader className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+          <div>
+            <CardTitle className="text-xl">Histórico Mensal Detalhado</CardTitle>
+            <p className="text-slate-500 text-sm">Analise a evolução dos gastos ou ganhos com filtros por categoria ao longo do ano.</p>
+          </div>
+          <div className="flex flex-wrap gap-3 items-center">
+            <select
+              className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer hover:border-slate-300 transition-colors"
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
+            >
+              {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+            <select
+              className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer hover:border-slate-300 transition-colors"
+              value={historyTopic}
+              onChange={(e) => setHistoryTopic(e.target.value as 'Ganhos' | 'Gastos')}
+            >
+              <option value="Gastos">Gastos</option>
+              <option value="Ganhos">Ganhos</option>
+            </select>
+            <select
+              className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer hover:border-slate-300 transition-colors max-w-[200px]"
+              value={historyCategory}
+              onChange={(e) => setHistoryCategory(e.target.value)}
+            >
+              {availableCategories.map(c => <option key={c} value={c}>{c === 'Todas' ? 'Todas Categorias' : c}</option>)}
+            </select>
+            {historyCategory !== 'Todas' && availableSubcategories.length > 1 && (
+              <select
+                className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer hover:border-slate-300 transition-colors animate-in fade-in zoom-in duration-200 max-w-[200px]"
+                value={historySubcategory}
+                onChange={(e) => setHistorySubcategory(e.target.value)}
+              >
+                {availableSubcategories.map(s => <option key={s} value={s}>{s === 'Todas' ? 'Todas Subcategorias' : s}</option>)}
+              </select>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -439,50 +583,47 @@ export default function Dashboard() {
               <thead>
                 <tr className="border-b border-slate-100">
                   <th className="text-left py-3 px-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Mês</th>
-                  <th className="text-right py-3 px-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Ganhos</th>
-                  <th className="text-right py-3 px-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Gastos</th>
-                  <th className="text-right py-3 px-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Saldo Líquido</th>
-                  <th className="py-3 px-4 text-xs font-bold text-slate-400 uppercase tracking-wider w-40">Proporção</th>
+                  <th className="text-right py-3 px-4 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    {historyTopic === 'Gastos' ? 'Gastos Registrados' : 'Ganhos Registrados'}
+                  </th>
+                  <th className="text-right py-3 px-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Mês Anterior</th>
+                  <th className="text-right py-3 px-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Variação (%)</th>
                 </tr>
               </thead>
               <tbody>
-                {[...monthlyData].reverse().map((month, i) => {
-                  const saldo = month.earnings - month.expenses;
-                  const isPositive = saldo >= 0;
-                  const maxVal = Math.max(month.earnings, month.expenses, 1);
-                  const earningsWidth = Math.round((month.earnings / maxVal) * 100);
-                  const expensesWidth = Math.round((month.expenses / maxVal) * 100);
+                {historyMontlyData.map((month) => {
+                  const variation = month.previousTotal > 0 
+                    ? ((month.total - month.previousTotal) / month.previousTotal) * 100 
+                    : (month.total > 0 ? 100 : 0);
+                  
+                  const isGood = historyTopic === 'Gastos' ? variation <= 0 : variation >= 0;
+                  const absVar = Math.abs(variation);
+                  const isZeroToZero = month.previousTotal === 0 && month.total === 0;
+                  
                   return (
-                    <tr key={month.monthKey || i} className="border-b border-slate-50 hover:bg-slate-50/60 transition-colors group">
+                    <tr key={month.name} className="border-b border-slate-50 hover:bg-slate-50/60 transition-colors group">
                       <td className="py-4 px-4">
                         <span className="font-bold text-slate-700 capitalize">{month.name}</span>
                       </td>
                       <td className="py-4 px-4 text-right">
-                        <span className="font-semibold text-emerald-600">{formatCurrency(month.earnings)}</span>
-                      </td>
-                      <td className="py-4 px-4 text-right">
-                        <span className="font-semibold text-red-500">{formatCurrency(month.expenses)}</span>
-                      </td>
-                      <td className="py-4 px-4 text-right">
-                        <span className={cn("font-bold text-base", isPositive ? "text-emerald-600" : "text-red-600")}>
-                          {isPositive ? "+" : ""}{formatCurrency(saldo)}
+                        <span className={cn("font-bold text-base", historyTopic === 'Gastos' ? "text-red-500" : "text-emerald-600")}>
+                          {formatCurrency(month.total)}
                         </span>
                       </td>
-                      <td className="py-4 px-4">
-                        <div className="flex flex-col gap-1">
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                            <div className="flex-1 bg-slate-100 rounded-full h-1.5">
-                              <div className="bg-emerald-500 h-1.5 rounded-full transition-all" style={{ width: `${earningsWidth}%` }} />
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-2 h-2 rounded-full bg-red-400 shrink-0" />
-                            <div className="flex-1 bg-slate-100 rounded-full h-1.5">
-                              <div className="bg-red-400 h-1.5 rounded-full transition-all" style={{ width: `${expensesWidth}%` }} />
-                            </div>
-                          </div>
-                        </div>
+                      <td className="py-4 px-4 text-right">
+                        <span className="font-semibold text-slate-400">{formatCurrency(month.previousTotal)}</span>
+                      </td>
+                      <td className="py-4 px-4 text-right">
+                        {isZeroToZero ? (
+                          <span className="text-slate-300">-</span>
+                        ) : (
+                          <span className={cn("inline-flex items-center gap-1 font-bold px-2 py-1 rounded-md text-xs", 
+                            isGood ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"
+                          )}>
+                            {variation > 0 ? <TrendingUp className="w-3 h-3" /> : variation < 0 ? <TrendingDown className="w-3 h-3" /> : null}
+                            {variation > 0 ? "+" : ""}{absVar.toFixed(1)}%
+                          </span>
+                        )}
                       </td>
                     </tr>
                   );
@@ -490,24 +631,13 @@ export default function Dashboard() {
               </tbody>
               <tfoot>
                 <tr className="bg-slate-50 rounded-xl">
-                  <td className="py-4 px-4 font-bold text-slate-900">Total (6 meses)</td>
-                  <td className="py-4 px-4 text-right font-black text-emerald-600">
-                    {formatCurrency(monthlyData.reduce((acc, m) => acc + m.earnings, 0))}
+                  <td className="py-4 px-4 font-bold text-slate-900">Total do Ano ({selectedYear})</td>
+                  <td className="py-4 px-4 text-right font-black text-lg">
+                    {formatCurrency(historyMontlyData.reduce((acc, m) => acc + m.total, 0))}
                   </td>
-                  <td className="py-4 px-4 text-right font-black text-red-500">
-                    {formatCurrency(monthlyData.reduce((acc, m) => acc + m.expenses, 0))}
+                  <td colSpan={2} className="py-4 px-4 text-right">
+                    <span className="text-xs text-slate-400 font-medium">Média mensal de {formatCurrency(historyMontlyData.reduce((acc, m) => acc + m.total, 0) / 12)}</span>
                   </td>
-                  <td className="py-4 px-4 text-right">
-                    {(() => {
-                      const totalSaldo = monthlyData.reduce((acc, m) => acc + (m.earnings - m.expenses), 0);
-                      return (
-                        <span className={cn("font-black text-base", totalSaldo >= 0 ? "text-emerald-600" : "text-red-600")}>
-                          {totalSaldo >= 0 ? "+" : ""}{formatCurrency(totalSaldo)}
-                        </span>
-                      );
-                    })()}
-                  </td>
-                  <td className="py-4 px-4" />
                 </tr>
               </tfoot>
             </table>
