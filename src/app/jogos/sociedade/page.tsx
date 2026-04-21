@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
+import { useGame } from "@/lib/game/GameContext";
 import { cn } from "@/lib/utils";
 import { Zap, Search, Coffee, Utensils, Droplet, Sparkles, Activity, BookOpen, X, Info } from "lucide-react";
 
@@ -177,118 +178,64 @@ function RulesModal({ onClose }: { onClose: () => void }) {
 
 // ─── Página Principal ────────────────────────────────────────────────────────
 export default function SociedadePage() {
-  const currentPhase: GamePhase = "PHASE_1_SURVIVAL";
+  const { gameData, updateSocietyData, loading: gameLoading } = useGame();
+  const { 
+    energy, 
+    satiety, 
+    hiddenExp, 
+    hasTransitioned, 
+    lastPassiveDrainUpdate 
+  } = gameData.society;
 
-  // Estado central do jogo
-  const [energy, setEnergy] = useState<number>(50); // Mock da External Energy
-  const [satiety, setSatiety] = useState<number>(80);
-  const [hiddenExp, setHiddenExp] = useState<number>(0);
-  const [hasTransitioned, setHasTransitioned] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([{ id: 'init', msg: "Uma nova forma de vida despertou.", type: "neutral", timestamp: new Date() }]);
   const [animClass, setAnimClass] = useState<string>("anim-idle");
   const [rulesOpen, setRulesOpen] = useState(false);
 
+  const addLog = useCallback((msg: string, type: LogEntry['type']) => {
+    setLogs(prev => [{ id: Math.random().toString(), msg, type, timestamp: new Date() }, ...prev]);
+  }, []);
+
   // ─── Lógica de Decaimento Passivo (1 a cada 15 mins) ──────────────────────
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (gameLoading || !lastPassiveDrainUpdate) return;
 
-    const STORAGE_KEY = "sociedade_satiety_v2";
     const FIFTEEN_MINS_MS = 15 * 60 * 1000;
+    const now = Date.now();
+    const lastUpdateTs = new Date(lastPassiveDrainUpdate).getTime();
+    const elapsed = now - lastUpdateTs;
+    const ticksMissed = Math.floor(elapsed / FIFTEEN_MINS_MS);
 
-    const loadPassiveDrain = () => {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        try {
-          const { lastSatiety, lastUpdate } = JSON.parse(stored);
-          const now = Date.now();
-          const elapsed = now - lastUpdate;
-          const ticksMissed = Math.floor(elapsed / FIFTEEN_MINS_MS);
-          
-          if (ticksMissed > 0) {
-            const newSatiety = Math.max(0, lastSatiety - ticksMissed);
-            setSatiety(newSatiety);
-            
-            // Re-sync timestamp to the latest clean tick
-            const leftoverMs = elapsed % FIFTEEN_MINS_MS;
-            localStorage.setItem(STORAGE_KEY, JSON.stringify({
-              lastSatiety: newSatiety,
-              lastUpdate: now - leftoverMs, 
-            }));
-            
-            addLog(`O tempo passou. Organismo consumiu ${lastSatiety - newSatiety} de saciedade enquanto você esteve fora.`, "negative");
-          } else {
-            setSatiety(lastSatiety);
-          }
-        } catch (e) {}
-      } else {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({
-          lastSatiety: 80,
-          lastUpdate: Date.now()
-        }));
+    if (ticksMissed > 0) {
+      const newSatiety = Math.max(0, satiety - ticksMissed);
+      const newUpdateDate = new Date(lastUpdateTs + (ticksMissed * FIFTEEN_MINS_MS)).toISOString();
+
+      updateSocietyData({
+        satiety: newSatiety,
+        lastPassiveDrainUpdate: newUpdateDate,
+        hiddenExp: newSatiety === 0 ? 0 : hiddenExp
+      });
+
+      addLog(`O tempo passou. Organismo consumiu ${satiety - newSatiety} de saciedade enquanto você esteve fora.`, "negative");
+      if (newSatiety === 0 && hiddenExp > 0) {
+        addLog("O organismo feneceu e perdeu toda a sua sabedoria acumulada.", "negative");
       }
-    };
-
-    loadPassiveDrain();
+    }
 
     const interval = setInterval(() => {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        try {
-          const { lastSatiety, lastUpdate } = JSON.parse(stored);
-          const now = Date.now();
-          const elapsed = now - lastUpdate;
-          if (elapsed >= FIFTEEN_MINS_MS) {
-             const newSatiety = Math.max(0, lastSatiety - 1);
-             setSatiety(newSatiety);
-             localStorage.setItem(STORAGE_KEY, JSON.stringify({
-               lastSatiety: newSatiety,
-               lastUpdate: now
-             }));
-          }
-        } catch(e){}
+      const currentNow = Date.now();
+      const latestDataTs = new Date(lastPassiveDrainUpdate).getTime();
+      if (currentNow - latestDataTs >= FIFTEEN_MINS_MS) {
+        const nextSatiety = Math.max(0, satiety - 1);
+        updateSocietyData({
+          satiety: nextSatiety,
+          lastPassiveDrainUpdate: new Date().toISOString(),
+          hiddenExp: nextSatiety === 0 ? 0 : hiddenExp
+        });
       }
-    }, 60000); // checks every minute
+    }, 60000); // Check every minute
 
     return () => clearInterval(interval);
-  }, []);
-
-  // Update localStorage whenever satiety changes manually (like eating)
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const STORAGE_KEY = "sociedade_satiety_v2";
-    const stored = localStorage.getItem(STORAGE_KEY);
-    let lastUpdate = Date.now();
-    if (stored) {
-      try { lastUpdate = JSON.parse(stored).lastUpdate; } catch (e) {}
-    }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      lastSatiety: satiety,
-      lastUpdate
-    }));
-  }, [satiety]);
-
-  // Atualizar localStorage para Hidden Exp e HasTransitioned
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const storedExp = localStorage.getItem("sociedade_hid_v2");
-    const storedWin = localStorage.getItem("sociedade_win_v2");
-    if (storedExp) setHiddenExp(Number(storedExp));
-    if (storedWin === "true") setHasTransitioned(true);
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    localStorage.setItem("sociedade_hid_v2", hiddenExp.toString());
-  }, [hiddenExp]);
-
-  useEffect(() => {
-    if (satiety === 0) {
-      if (hiddenExp > 0) {
-        setHiddenExp(0);
-        addLog("O organismo feneceu e perdeu toda a sua sabedoria acumulada. Retornando ao estado primitivo Inexperiente.", "negative");
-      }
-    }
-  }, [satiety, hiddenExp]);
+  }, [gameLoading, lastPassiveDrainUpdate, satiety, hiddenExp, updateSocietyData, addLog]);
 
   // Gatilho de animação
   const triggerAnim = (animationName: string) => {
@@ -296,10 +243,6 @@ export default function SociedadePage() {
     setTimeout(() => {
       setAnimClass("anim-idle");
     }, 400); // tempo que bate com a animação CSS
-  };
-
-  const addLog = (msg: string, type: LogEntry['type']) => {
-    setLogs(prev => [{ id: Math.random().toString(), msg, type, timestamp: new Date() }, ...prev]);
   };
 
   // ─── Funções Principais de Ação ─────────────────────────────────────────────
@@ -310,9 +253,11 @@ export default function SociedadePage() {
       return;
     }
     
-    // Custos e Efeitos
-    setEnergy(e => e - 5);
-    setSatiety(s => Math.min(100, s + 20)); // Capa em 100
+    updateSocietyData({
+      energy: energy - 5,
+      satiety: Math.min(100, satiety + 20)
+    });
+    
     addLog("O ser se alimentou e recuperou forças.", "positive");
     triggerAnim("anim-eat");
   };
@@ -323,43 +268,44 @@ export default function SociedadePage() {
       return;
     }
     
-    setEnergy(e => e - 3);
-    triggerAnim("anim-explore");
-
-    // XP Gain and Rank computation
+    const nextExp = hiddenExp + 1;
+    const newRank = getRank(nextExp);
     const oldRankTitle = getRank(hiddenExp).title;
-    const newExp = hiddenExp + 1;
-    setHiddenExp(newExp);
-    const newRank = getRank(newExp);
+    
+    let nextEnergy = energy - 3;
+    let nextSatiety = satiety;
+    let nextHasTransitioned = hasTransitioned;
+
+    triggerAnim("anim-explore");
 
     if (newRank.title !== oldRankTitle) {
       addLog(`✨ Brilhante! O organismo se tornou um ser: ${newRank.title}. Suas chances em exploração aumentaram.`, "positive");
     }
 
     // Phase transition roll
-    if (newRank.phaseChance > 0) {
-      if (Math.random() < newRank.phaseChance) {
-        setHasTransitioned(true);
-        if (typeof window !== "undefined") localStorage.setItem("sociedade_win_v2", "true");
-        return; 
-      } else if (Math.random() < 0.25) { // Indicadores narrativos
-        addLog("O ser começa a entender estruturas complexas ao seu redor. A evolução parece possível...", "neutral");
+    const roll = Math.random();
+    if (newRank.phaseChance > 0 && roll < newRank.phaseChance) {
+      nextHasTransitioned = true;
+    } else {
+      // Sorteio Simples Escalonado
+      const eventRoll = Math.random();
+      if (eventRoll < newRank.foodChance) {
+        nextSatiety = Math.min(100, satiety + 10);
+        addLog("Graças à sua percepção, encontrou nutrientes de qualidade!", "positive");
+      } else if (eventRoll > 0.85) {
+        nextSatiety = Math.max(0, satiety - 10);
+        addLog("Esbarrou em um obstáculo duro ou predador. Perdeu energia vital.", "negative");
+      } else {
+        addLog("Explorou bastante, estudou o ambiente, mas não encontrou nutrientes.", "neutral");
       }
     }
 
-    // Sorteio Simples Escalonado
-    const roll = Math.random();
-    if (roll < newRank.foodChance) {
-      setSatiety(s => Math.min(100, s + 10));
-      addLog("Graças à sua percepção, encontrou nutrientes de qualidade!", "positive");
-    } else if (roll > 0.85) {
-      // 15% Dano - Acontece quando o roll está no top 15% (ex: > 0.85). Mantém-se estatisticamente em ~15% sempre.
-      setSatiety(s => Math.max(0, s - 10));
-      addLog("Esbarrou em um obstáculo duro ou predador. Perdeu energia vital.", "negative");
-    } else {
-      // O meio do espectro 
-      addLog("Explorou bastante, estudou o ambiente, mas não encontrou nutrientes.", "neutral");
-    }
+    updateSocietyData({
+      energy: nextEnergy,
+      hiddenExp: nextExp,
+      satiety: nextSatiety,
+      hasTransitioned: nextHasTransitioned
+    });
   };
 
   // ─── Variáveis Visuais baseadas no Estado ──────────────────────────────────

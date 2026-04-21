@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc, Timestamp } from "firebase/firestore";
+import { doc, getDoc, setDoc, Timestamp, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
 import { GameData, defaultGameData, DAILY_MISSIONS_TEMPLATE, Mission } from "./types";
 
@@ -51,11 +51,35 @@ export async function getGameData(userId: string): Promise<GameData> {
       missions,
       rewards: raw.rewards ?? [],
       metadata: raw.metadata ?? {},
+      society: raw.society ?? defaultGameData.society,
     };
   }
   // First access — seed with defaults
   await setDoc(ref, { ...defaultGameData, createdAt: Timestamp.now() });
   return { ...defaultGameData };
+}
+
+/** Sincronização em tempo real */
+export function subscribeToGameData(userId: string, callback: (data: GameData) => void) {
+  const ref = doc(db, COLLECTION, userId);
+  return onSnapshot(ref, (snap) => {
+    if (snap.exists()) {
+      const raw = snap.data() as any;
+      const missions = ensureFreshDailyMissions(raw.missions ?? []);
+      callback({
+        xp: raw.xp ?? 0,
+        level: raw.level ?? 1,
+        streak: raw.streak ?? 0,
+        lastUpdate: raw.lastUpdate ?? new Date().toISOString(),
+        gameMode: raw.gameMode ?? "plant",
+        achievements: raw.achievements ?? [],
+        missions,
+        rewards: raw.rewards ?? [],
+        metadata: raw.metadata ?? {},
+        society: raw.society ?? defaultGameData.society,
+      });
+    }
+  });
 }
 
 // ─── Save ─────────────────────────────────────────────────────────────────────

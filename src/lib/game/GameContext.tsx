@@ -19,7 +19,7 @@ import {
   calculateLevel,
   defaultGameData,
 } from "@/lib/game/types";
-import { getGameData, saveGameData } from "@/lib/game/db";
+import { getGameData, saveGameData, subscribeToGameData } from "@/lib/game/db";
 
 // ─── Shared user ID (replace with real auth uid when ready) ──────────────────
 const FAMILY_USER_ID = "family";
@@ -41,6 +41,8 @@ interface GameContextValue {
   completeMission: (missionId: string) => void;
   /** Track how many missions were completed total (for achievement) */
   totalMissionsCompleted: number;
+  /** Update society specific game data */
+  updateSocietyData: (updates: Partial<GameData['society']>) => Promise<void>;
 }
 
 const GameContext = createContext<GameContextValue | null>(null);
@@ -131,17 +133,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   }), []);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const data = await getGameData(FAMILY_USER_ID);
-        setGameData(data);
-        setTotalMissionsCompleted(data.metadata.totalMissionsDone ?? 0);
-      } catch (err) {
-        console.error("[GameContext] Failed to load game data:", err);
-      } finally {
-        setLoading(false);
-      }
-    })();
+    const unsubscribe = subscribeToGameData(FAMILY_USER_ID, (data) => {
+      setGameData(data);
+      setTotalMissionsCompleted(data.metadata.totalMissionsDone ?? 0);
+      setLoading(false);
+    });
+    return () => unsubscribe();
   }, []);
 
   // ── addXP ─────────────────────────────────────────────────────────────────
@@ -166,6 +163,16 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         lastUpdate: updated.lastUpdate,
       }).catch((err) => console.error("[GameContext] Failed to save XP:", err));
 
+      return updated;
+    });
+  const updateSocietyData = useCallback(async (updates: Partial<GameData['society']>) => {
+    setGameData((prev) => {
+      const updatedSociety = { ...prev.society, ...updates };
+      const updated: GameData = { ...prev, society: updatedSociety };
+      
+      saveGameData(FAMILY_USER_ID, { society: updatedSociety })
+        .catch(err => console.error("[GameContext] Failed to save society data:", err));
+        
       return updated;
     });
   }, []);
@@ -272,15 +279,19 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const newAchievements = checkAchievements({ ...prev, level: calculateLevel(newXP), streak }, type, counters);
       const allAchievements = [...prev.achievements, ...newAchievements];
 
+      const addedEnergy = (["expense_created", "income_added", "investment_added", "dividend_added"].includes(type)) ? 2 : 0;
+      const updatedSociety = { ...prev.society, energy: (prev.society?.energy ?? 0) + addedEnergy };
+
       const updated: GameData = {
         ...prev,
         xp: newXP,
         level: calculateLevel(newXP),
-        streak,
+        streak: streak,
         lastUpdate: new Date().toISOString(),
         missions: updatedMissions,
         achievements: allAchievements,
         metadata: meta,
+        society: updatedSociety,
       };
 
       xpLog.current.push({ amount: xpAmount + missionXP, source: type, timestamp: new Date().toISOString() });
@@ -293,6 +304,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         missions: updated.missions,
         achievements: updated.achievements,
         metadata: updated.metadata,
+        society: updated.society,
       }).catch((err) => console.error("[GameContext] Failed to save action:", err));
 
       console.debug(
@@ -305,7 +317,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <GameContext.Provider
-      value={{ gameData, loading, addXP, onFinancialAction, completeMission, totalMissionsCompleted }}
+      value={{ gameData, loading, addXP, onFinancialAction, completeMission, totalMissionsCompleted, updateSocietyData }}
     >
       {children}
     </GameContext.Provider>

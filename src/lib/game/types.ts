@@ -53,6 +53,13 @@ export interface GameData {
   missions: Mission[];
   rewards: Reward[];
   metadata: Record<string, any>;
+  society: {
+    satiety: number;
+    energy: number;
+    hiddenExp: number;
+    hasTransitioned: boolean;
+    lastPassiveDrainUpdate: string;
+  };
 }
 
 // ─── XP Events ────────────────────────────────────────────────────────────────
@@ -278,6 +285,13 @@ export const defaultGameData: GameData = {
   missions: DAILY_MISSIONS_TEMPLATE.map((m) => ({ ...m, isCompleted: false })),
   rewards: [],
   metadata: {},
+  society: {
+    satiety: 80,
+    energy: 50,
+    hiddenExp: 0,
+    hasTransitioned: false,
+    lastPassiveDrainUpdate: new Date().toISOString(),
+  },
 };
 
 // ─── XP calculation helpers ───────────────────────────────────────────────────
