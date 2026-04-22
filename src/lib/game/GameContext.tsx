@@ -165,6 +165,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
       return updated;
     });
+  }, []);
+
   const updateSocietyData = useCallback(async (updates: Partial<GameData['society']>) => {
     setGameData((prev) => {
       const updatedSociety = { ...prev.society, ...updates };
