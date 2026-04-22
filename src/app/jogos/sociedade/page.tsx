@@ -237,6 +237,31 @@ export default function SociedadePage() {
     return () => clearInterval(interval);
   }, [gameLoading, lastPassiveDrainUpdate, satiety, hiddenExp, updateSocietyData, addLog]);
 
+  // Restauração Automática: Corrige se a saciedade foi zerada por causa do bug de data no Firestore
+  useEffect(() => {
+    if (gameLoading) return;
+    const fixApplied = localStorage.getItem("sociedade_bugfix_v3");
+    if (!fixApplied) {
+      if (satiety === 0) {
+        let restoredSatiety = 80;
+        try {
+          const stored = localStorage.getItem("sociedade_satiety_v2");
+          if (stored) {
+            const { lastSatiety } = JSON.parse(stored);
+            if (typeof lastSatiety === "number" && lastSatiety > 0) restoredSatiety = lastSatiety;
+          }
+        } catch (e) {}
+        
+        updateSocietyData({
+          satiety: restoredSatiety,
+          lastPassiveDrainUpdate: new Date().toISOString()
+        });
+        addLog("Os níveis biológicos foram estabilizados pelo sistema reparador.", "positive");
+      }
+      localStorage.setItem("sociedade_bugfix_v3", "true");
+    }
+  }, [gameLoading, satiety, updateSocietyData, addLog]);
+
   // Gatilho de animação
   const triggerAnim = (animationName: string) => {
     setAnimClass(animationName);
