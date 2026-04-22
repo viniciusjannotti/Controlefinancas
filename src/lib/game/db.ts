@@ -51,7 +51,13 @@ export async function getGameData(userId: string): Promise<GameData> {
       missions,
       rewards: raw.rewards ?? [],
       metadata: raw.metadata ?? {},
-      society: { ...defaultGameData.society, ...(raw.society ?? {}) },
+      society: {
+        satiety: typeof raw.society?.satiety === 'number' ? raw.society.satiety : defaultGameData.society.satiety,
+        energy: typeof raw.society?.energy === 'number' ? raw.society.energy : defaultGameData.society.energy,
+        hiddenExp: typeof raw.society?.hiddenExp === 'number' ? raw.society.hiddenExp : defaultGameData.society.hiddenExp,
+        hasTransitioned: !!raw.society?.hasTransitioned,
+        lastPassiveDrainUpdate: raw.society?.lastPassiveDrainUpdate || new Date().toISOString()
+      },
     };
   }
   // First access — seed with defaults
@@ -76,7 +82,13 @@ export function subscribeToGameData(userId: string, callback: (data: GameData) =
         missions,
         rewards: raw.rewards ?? [],
         metadata: raw.metadata ?? {},
-        society: { ...defaultGameData.society, ...(raw.society ?? {}) },
+        society: {
+          satiety: typeof raw.society?.satiety === 'number' ? raw.society.satiety : defaultGameData.society.satiety,
+          energy: typeof raw.society?.energy === 'number' ? raw.society.energy : defaultGameData.society.energy,
+          hiddenExp: typeof raw.society?.hiddenExp === 'number' ? raw.society.hiddenExp : defaultGameData.society.hiddenExp,
+          hasTransitioned: !!raw.society?.hasTransitioned,
+          lastPassiveDrainUpdate: raw.society?.lastPassiveDrainUpdate || new Date().toISOString()
+        },
       });
     }
   });

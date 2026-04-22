@@ -187,9 +187,15 @@ export default function SociedadePage() {
     lastPassiveDrainUpdate 
   } = gameData.society;
 
-  const [logs, setLogs] = useState<LogEntry[]>([{ id: 'init', msg: "Uma nova forma de vida despertou.", type: "neutral", timestamp: new Date() }]);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
   const [animClass, setAnimClass] = useState<string>("anim-idle");
   const [rulesOpen, setRulesOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+    setLogs([{ id: 'init', msg: "Uma nova forma de vida despertou.", type: "neutral", timestamp: new Date() }]);
+  }, []);
 
   const addLog = useCallback((msg: string, type: LogEntry['type']) => {
     setLogs(prev => [{ id: Math.random().toString(), msg, type, timestamp: new Date() }, ...prev]);
@@ -202,11 +208,19 @@ export default function SociedadePage() {
     const FIFTEEN_MINS_MS = 15 * 60 * 1000;
     const now = Date.now();
     const lastUpdateTs = new Date(lastPassiveDrainUpdate).getTime();
+    
+    // Fallback if date is invalid
+    if (isNaN(lastUpdateTs)) {
+      updateSocietyData({ lastPassiveDrainUpdate: new Date().toISOString() });
+      return;
+    }
+
     const elapsed = now - lastUpdateTs;
     const ticksMissed = Math.floor(elapsed / FIFTEEN_MINS_MS);
 
     if (ticksMissed > 0) {
-      const newSatiety = Math.max(0, satiety - ticksMissed);
+      const currentSatiety = typeof satiety === 'number' ? satiety : 0;
+      const newSatiety = Math.max(0, currentSatiety - ticksMissed);
       const newUpdateDate = new Date(lastUpdateTs + (ticksMissed * FIFTEEN_MINS_MS)).toISOString();
 
       updateSocietyData({
@@ -348,6 +362,14 @@ export default function SociedadePage() {
 
   if (energy === 0) {
     blobFace = "😵";
+  }
+
+  if (!isMounted || gameLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      </div>
+    );
   }
 
   // Render da Fase 2 bloqueada (Vitória Temporal)
