@@ -280,7 +280,8 @@ export default function SociedadePage() {
     
     updateSocietyData({
       energy: energy - 5,
-      satiety: Math.min(100, satiety + 20)
+      satiety: Math.min(100, satiety + 20),
+      lastPassiveDrainUpdate: new Date().toISOString()
     });
     
     addLog("O ser se alimentou e recuperou forças.", "positive");
@@ -329,7 +330,8 @@ export default function SociedadePage() {
       energy: nextEnergy,
       hiddenExp: nextExp,
       satiety: nextSatiety,
-      hasTransitioned: nextHasTransitioned
+      hasTransitioned: nextHasTransitioned,
+      lastPassiveDrainUpdate: new Date().toISOString()
     });
   };
 

@@ -280,7 +280,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const allAchievements = [...prev.achievements, ...newAchievements];
 
       const addedEnergy = (["expense_created", "income_added", "investment_added", "dividend_added"].includes(type)) ? 2 : 0;
-      const updatedSociety = { ...prev.society, energy: (prev.society?.energy ?? 0) + addedEnergy };
+      const updatedSociety = { 
+        ...prev.society, 
+        energy: (prev.society?.energy ?? 0) + addedEnergy,
+        lastPassiveDrainUpdate: addedEnergy > 0 ? new Date().toISOString() : prev.society?.lastPassiveDrainUpdate
+      };
 
       const updated: GameData = {
         ...prev,

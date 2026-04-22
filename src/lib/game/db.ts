@@ -51,7 +51,7 @@ export async function getGameData(userId: string): Promise<GameData> {
       missions,
       rewards: raw.rewards ?? [],
       metadata: raw.metadata ?? {},
-      society: raw.society ?? { ...defaultGameData.society, lastPassiveDrainUpdate: new Date().toISOString() },
+      society: { ...defaultGameData.society, ...(raw.society ?? {}) },
     };
   }
   // First access — seed with defaults
@@ -76,7 +76,7 @@ export function subscribeToGameData(userId: string, callback: (data: GameData) =
         missions,
         rewards: raw.rewards ?? [],
         metadata: raw.metadata ?? {},
-        society: raw.society ?? { ...defaultGameData.society, lastPassiveDrainUpdate: new Date().toISOString() },
+        society: { ...defaultGameData.society, ...(raw.society ?? {}) },
       });
     }
   });
