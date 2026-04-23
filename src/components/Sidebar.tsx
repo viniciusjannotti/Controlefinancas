@@ -33,7 +33,7 @@ const gamesSubmenu = [
   { name: "Sociedade", href: "/jogos/sociedade", icon: Droplet },
 ];
 
-export function Sidebar() {
+export function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose?: () => void }) {
   const pathname = usePathname();
   const isUnderGames = pathname.startsWith("/jogos");
   const [gamesOpen, setGamesOpen] = useState(isUnderGames);
@@ -47,7 +47,19 @@ export function Sidebar() {
     );
 
   return (
-    <div className="flex flex-col h-full bg-white border-r border-slate-200 w-64 fixed left-0 top-0 z-40">
+    <>
+      {/* Backdrop for mobile */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 lg:hidden"
+          onClick={onClose}
+        />
+      )}
+
+      <div className={cn(
+        "flex flex-col h-full bg-white border-r border-slate-200 w-64 fixed left-0 top-0 z-50 transition-transform duration-300 ease-in-out",
+        !isOpen && "-translate-x-full lg:translate-x-0"
+      )}>
       {/* Logo */}
       <div className="p-6">
         <h1 className="text-2xl font-bold text-primary flex items-center gap-2">
@@ -140,6 +152,6 @@ export function Sidebar() {
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
