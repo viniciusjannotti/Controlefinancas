@@ -670,6 +670,7 @@ export default function Dashboard() {
                   tickLine={false} 
                   tick={{ fontSize: 10, fill: "#94A3B8" }}
                   tickFormatter={(val) => `R$${val >= 1000 ? (val/1000).toFixed(1)+'k' : val}`}
+                  domain={['dataMin', 'auto']}
                 />
                 <Tooltip 
                   cursor={{ stroke: '#3B82F6', strokeWidth: 2, strokeDasharray: '5 5' }}
