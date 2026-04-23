@@ -90,14 +90,14 @@ export default function Dashboard() {
         const currentMonthEarnings = allEarnings
           .filter(e => {
             const d = e.date?.seconds ? new Date(e.date.seconds * 1000) : new Date(e.date + 'T00:00:00');
-            return d >= startOfCurrentMonth;
+            return isSameMonth(d, now);
           })
           .reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
 
         const currentMonthExpenses = allExpenses
           .filter(e => {
             const d = e.date?.seconds ? new Date(e.date.seconds * 1000) : new Date(e.date + 'T00:00:00');
-            return d >= startOfCurrentMonth;
+            return isSameMonth(d, now);
           })
           .reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
 
