@@ -1,9 +1,9 @@
 "use client";
 
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  DollarSign, 
+import {
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
   LineChart as LineChartIcon,
   PieChart as PieChartIcon,
   ArrowUpRight,
@@ -13,13 +13,13 @@ import {
   ChevronLeft,
   Briefcase
 } from "lucide-react";
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   LineChart,
   Line,
@@ -62,8 +62,8 @@ export default function Dashboard() {
       setLoading(true);
       try {
         const [
-          mariaEarnings, 
-          viniciusEarnings, 
+          mariaEarnings,
+          viniciusEarnings,
           allExpenses,
           mariaInvestments,
           viniciusInvestments,
@@ -82,10 +82,10 @@ export default function Dashboard() {
         const allEarnings = [...mariaEarnings, ...viniciusEarnings];
         const allInvestments = [...mariaInvestments, ...viniciusInvestments];
         const allDividends = [...mariaDividends, ...viniciusDividends];
-        
+
         const now = new Date();
         const startOfCurrentMonth = startOfMonth(now);
-        
+
         // 1. Calculate Summary Metrics (Current Month)
         const currentMonthEarnings = allEarnings
           .filter(e => {
@@ -164,8 +164,8 @@ export default function Dashboard() {
     const colors = ["#3B82F6", "#8B5CF6", "#10B981", "#F59E0B", "#EC4899", "#6366F1", "#14B8A6", "#F43F5E", "#84CC16", "#EAB308"];
 
     const filtered = allExpensesList.filter(e => {
-      const d = e.date?.seconds 
-        ? new Date(e.date.seconds * 1000) 
+      const d = e.date?.seconds
+        ? new Date(e.date.seconds * 1000)
         : (typeof e.date === 'string' ? new Date(e.date + 'T00:00:00') : new Date(e.date));
       return isSameMonth(d, categoryMonth);
     });
@@ -174,7 +174,7 @@ export default function Dashboard() {
       const parts = (e.category || "Outros").split(" > ");
       const parent = parts[0];
       const sub = parts[1] || parent;
-      
+
       expensesByCategory[parent] = (expensesByCategory[parent] || 0) + (Number(e.amount) || 0);
 
       if (!detailedDetails[parent]) detailedDetails[parent] = [];
@@ -203,17 +203,17 @@ export default function Dashboard() {
 
   const { availableYears, availableCategories, availableSubcategories, historyMontlyData } = React.useMemo(() => {
     const sourceData = historyTopic === 'Gastos' ? allExpensesList : allEarningsList;
-    
+
     const yearsSet = new Set<number>();
     allExpensesList.forEach(e => {
-       const d = e.date?.seconds ? new Date(e.date.seconds * 1000) : new Date(e.date + 'T00:00:00');
-       yearsSet.add(d.getFullYear());
+      const d = e.date?.seconds ? new Date(e.date.seconds * 1000) : new Date(e.date + 'T00:00:00');
+      yearsSet.add(d.getFullYear());
     });
     allEarningsList.forEach(e => {
-       const d = e.date?.seconds ? new Date(e.date.seconds * 1000) : new Date(e.date + 'T00:00:00');
-       yearsSet.add(d.getFullYear());
+      const d = e.date?.seconds ? new Date(e.date.seconds * 1000) : new Date(e.date + 'T00:00:00');
+      yearsSet.add(d.getFullYear());
     });
-    
+
     const years = Array.from(yearsSet).sort((a, b) => b - a);
     if (years.length === 0) years.push(new Date().getFullYear());
 
@@ -221,75 +221,75 @@ export default function Dashboard() {
     const subSet = new Set<string>();
 
     sourceData.forEach(e => {
-       if (historyTopic === 'Gastos') {
-          const parts = (e.category || "Outros").split(" > ");
-          catSet.add(parts[0]);
-          if (historyCategory === 'Todas' || historyCategory === parts[0]) {
-             if (parts[1]) subSet.add(parts[1]);
-          }
-       } else {
-          const person = e.userId === 'vinicius' ? 'Vinícius' : (e.userId === 'maria' ? 'Maria' : 'Outros');
-          catSet.add(person);
-          if (historyCategory === 'Todas' || historyCategory === person) {
-             const sub = e.name || "Não Identificado";
-             if (sub) subSet.add(sub);
-          }
-       }
+      if (historyTopic === 'Gastos') {
+        const parts = (e.category || "Outros").split(" > ");
+        catSet.add(parts[0]);
+        if (historyCategory === 'Todas' || historyCategory === parts[0]) {
+          if (parts[1]) subSet.add(parts[1]);
+        }
+      } else {
+        const person = e.userId === 'vinicius' ? 'Vinícius' : (e.userId === 'maria' ? 'Maria' : 'Outros');
+        catSet.add(person);
+        if (historyCategory === 'Todas' || historyCategory === person) {
+          const sub = e.name || "Não Identificado";
+          if (sub) subSet.add(sub);
+        }
+      }
     });
 
     const monthsData = Array.from({ length: 12 }, (_, i) => {
-        return {
-           monthIndex: i,
-           name: format(new Date(selectedYear, i, 1), 'MMMM', { locale: ptBR }),
-           total: 0,
-           previousTotal: 0
-        };
+      return {
+        monthIndex: i,
+        name: format(new Date(selectedYear, i, 1), 'MMMM', { locale: ptBR }),
+        total: 0,
+        previousTotal: 0
+      };
     });
 
     sourceData.forEach(e => {
-       const d = e.date?.seconds ? new Date(e.date.seconds * 1000) : (typeof e.date === 'string' ? new Date(e.date + 'T00:00:00') : new Date(e.date));
-       
-       const eYear = d.getFullYear();
-       const eMonth = d.getMonth();
+      const d = e.date?.seconds ? new Date(e.date.seconds * 1000) : (typeof e.date === 'string' ? new Date(e.date + 'T00:00:00') : new Date(e.date));
 
-       if (eYear !== selectedYear && eYear !== selectedYear - 1) return;
+      const eYear = d.getFullYear();
+      const eMonth = d.getMonth();
 
-       let matchesCat = true;
-       let matchesSub = true;
+      if (eYear !== selectedYear && eYear !== selectedYear - 1) return;
 
-       if (historyTopic === 'Gastos') {
-          const parts = (e.category || "Outros").split(" > ");
-          const parent = parts[0];
-          const sub = parts[1] || parent;
+      let matchesCat = true;
+      let matchesSub = true;
 
-          if (historyCategory !== 'Todas' && parent !== historyCategory) matchesCat = false;
-          if (historyCategory !== 'Todas' && historySubcategory !== 'Todas' && sub !== historySubcategory) matchesSub = false;
-       } else {
-          const person = e.userId === 'vinicius' ? 'Vinícius' : (e.userId === 'maria' ? 'Maria' : 'Outros');
-          const sub = e.name || "Não Identificado";
+      if (historyTopic === 'Gastos') {
+        const parts = (e.category || "Outros").split(" > ");
+        const parent = parts[0];
+        const sub = parts[1] || parent;
 
-          if (historyCategory !== 'Todas' && person !== historyCategory) matchesCat = false;
-          if (historyCategory !== 'Todas' && historySubcategory !== 'Todas' && sub !== historySubcategory) matchesSub = false;
-       }
+        if (historyCategory !== 'Todas' && parent !== historyCategory) matchesCat = false;
+        if (historyCategory !== 'Todas' && historySubcategory !== 'Todas' && sub !== historySubcategory) matchesSub = false;
+      } else {
+        const person = e.userId === 'vinicius' ? 'Vinícius' : (e.userId === 'maria' ? 'Maria' : 'Outros');
+        const sub = e.name || "Não Identificado";
 
-       if (matchesCat && matchesSub) {
-          if (eYear === selectedYear) {
-             monthsData[eMonth].total += (Number(e.amount) || 0);
-          } else if (eYear === selectedYear - 1 && eMonth === 11) {
-             monthsData[0].previousTotal += (Number(e.amount) || 0);
-          }
-       }
+        if (historyCategory !== 'Todas' && person !== historyCategory) matchesCat = false;
+        if (historyCategory !== 'Todas' && historySubcategory !== 'Todas' && sub !== historySubcategory) matchesSub = false;
+      }
+
+      if (matchesCat && matchesSub) {
+        if (eYear === selectedYear) {
+          monthsData[eMonth].total += (Number(e.amount) || 0);
+        } else if (eYear === selectedYear - 1 && eMonth === 11) {
+          monthsData[0].previousTotal += (Number(e.amount) || 0);
+        }
+      }
     });
 
     for (let i = 1; i < 12; i++) {
-        monthsData[i].previousTotal = monthsData[i - 1].total;
+      monthsData[i].previousTotal = monthsData[i - 1].total;
     }
 
     return {
-       availableYears: years,
-       availableCategories: ['Todas', ...Array.from(catSet).sort()],
-       availableSubcategories: ['Todas', ...Array.from(subSet).sort()],
-       historyMontlyData: monthsData
+      availableYears: years,
+      availableCategories: ['Todas', ...Array.from(catSet).sort()],
+      availableSubcategories: ['Todas', ...Array.from(subSet).sort()],
+      historyMontlyData: monthsData
     };
   }, [allExpensesList, allEarningsList, historyTopic, historyCategory, historySubcategory, selectedYear]);
 
@@ -304,6 +304,27 @@ export default function Dashboard() {
 
   const profitLoss = (metrics.totalMarketValue - metrics.totalInvested) + metrics.totalDividends;
   const profitPercentage = metrics.totalInvested > 0 ? (profitLoss / metrics.totalInvested) * 100 : 0;
+
+  const now = new Date();
+  const currentMonthIdx = now.getMonth();
+  const isCurrentYear = selectedYear === now.getFullYear();
+  const isPastYear = selectedYear < now.getFullYear();
+
+  const historyChartData = historyMontlyData.filter((_, i) => {
+    if (isPastYear) return true;
+    if (isCurrentYear) return i <= currentMonthIdx;
+    return false;
+  });
+
+  const concludedMonths = historyMontlyData.filter((_, i) => {
+    if (isPastYear) return true;
+    if (isCurrentYear) return i < currentMonthIdx;
+    return false;
+  });
+
+  const monthlyAverage = concludedMonths.length > 0 
+    ? concludedMonths.reduce((acc, m) => acc + m.total, 0) / concludedMonths.length 
+    : 0;
 
   if (loading) {
     return (
@@ -321,34 +342,34 @@ export default function Dashboard() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <SummaryCard 
-          title="Receita Mensal" 
-          value={metrics.monthlyEarnings} 
-          trend="+12%" 
+        <SummaryCard
+          title="Receita Mensal"
+          value={metrics.monthlyEarnings}
+          trend="+12%"
           trendType="up"
           icon={TrendingUp}
           color="blue"
         />
-        <SummaryCard 
-          title="Gastos Mensais" 
-          value={metrics.monthlyExpenses} 
-          trend="+5%" 
+        <SummaryCard
+          title="Gastos Mensais"
+          value={metrics.monthlyExpenses}
+          trend="+5%"
           trendType="down"
           icon={TrendingDown}
           color="blue"
         />
-        <SummaryCard 
-          title="Saldo Líquido" 
-          value={metrics.netBalance} 
-          trend="+18%" 
+        <SummaryCard
+          title="Saldo Líquido"
+          value={metrics.netBalance}
+          trend="+18%"
           trendType="up"
           icon={DollarSign}
           color="blue"
         />
-        <SummaryCard 
-          title="Patrimônio Total" 
-          value={metrics.totalMarketValue + metrics.totalDividends} 
-          trend={`${profitPercentage >= 0 ? '+' : ''}${profitPercentage.toFixed(1)}%`} 
+        <SummaryCard
+          title="Patrimônio Total"
+          value={metrics.totalMarketValue + metrics.totalDividends}
+          trend={`${profitPercentage >= 0 ? '+' : ''}${profitPercentage.toFixed(1)}%`}
           trendType={profitPercentage >= 0 ? "up" : "down"}
           icon={Briefcase}
           color="blue"
@@ -363,11 +384,11 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={monthlyData.map(m => ({...m, saldo: m.earnings - m.expenses}))} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <BarChart data={monthlyData.map(m => ({ ...m, saldo: m.earnings - m.expenses }))} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#94A3B8" }} dy={10} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#94A3B8" }} />
-                <Tooltip 
+                <Tooltip
                   cursor={{ fill: '#F8FAFC' }}
                   contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                   formatter={(value: any) => formatCurrency(Number(value))}
@@ -406,7 +427,7 @@ export default function Dashboard() {
                         <Cell key={`cell-${index}`} fill={entry.color} className="group-hover:opacity-90 transition-opacity focus:outline-none" />
                       ))}
                     </Pie>
-                    <Tooltip 
+                    <Tooltip
                       contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                       formatter={(value: any) => formatCurrency(Number(value))}
                     />
@@ -449,7 +470,7 @@ export default function Dashboard() {
                   <p className="text-slate-500 text-sm hidden sm:block">Navegue pelas categorias para ver as subcategorias de cada uma.</p>
                 </div>
               </div>
-              <button 
+              <button
                 onClick={() => setSelectedCategory(null)}
                 className="p-2 hover:bg-slate-100 rounded-full transition-colors"
               >
@@ -464,8 +485,8 @@ export default function Dashboard() {
                     onClick={() => setSelectedCategory(cat.name)}
                     className={cn(
                       "text-left px-4 py-3 rounded-xl transition-all font-medium text-sm flex justify-between items-center whitespace-nowrap md:whitespace-normal group",
-                      selectedCategory === cat.name 
-                        ? "bg-primary text-white shadow-md shadow-primary/20" 
+                      selectedCategory === cat.name
+                        ? "bg-primary text-white shadow-md shadow-primary/20"
                         : "bg-white border border-slate-200 text-slate-600 hover:border-primary/30 hover:bg-slate-50"
                     )}
                   >
@@ -505,18 +526,18 @@ export default function Dashboard() {
                             <Cell key={`cell-detailed-${index}`} fill={entry.color} />
                           ))}
                         </Pie>
-                        <Tooltip 
+                        <Tooltip
                           contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                           formatter={(value: any) => formatCurrency(Number(value))}
                         />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
-                  
+
                   <div className="space-y-4">
                     <h4 className="font-bold text-slate-500 text-sm uppercase tracking-wider border-b border-slate-100 pb-2">Subcategorias</h4>
                     <div className="space-y-2">
-                       {(detailedCategoryData[selectedCategory] || []).map((item, i) => (
+                      {(detailedCategoryData[selectedCategory] || []).map((item, i) => (
                         <div key={i} className="flex items-center justify-between group p-3 bg-slate-50 hover:bg-slate-100 hover:shadow-sm rounded-xl transition-all border border-transparent hover:border-slate-200">
                           <div className="flex items-center gap-3">
                             <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
@@ -578,69 +599,129 @@ export default function Dashboard() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto pb-4 custom-scrollbar">
+            <table className="w-full border-collapse">
               <thead>
-                <tr className="border-b border-slate-100">
-                  <th className="text-left py-3 px-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Mês</th>
-                  <th className="text-right py-3 px-4 text-xs font-bold text-slate-400 uppercase tracking-wider">
-                    {historyTopic === 'Gastos' ? 'Gastos Registrados' : 'Ganhos Registrados'}
+                <tr className="border-b border-slate-100 bg-slate-50/50">
+                  <th className="text-left py-4 px-6 text-xs font-black text-slate-400 uppercase tracking-widest sticky left-0 bg-slate-50/50 z-10 border-r border-slate-100 min-w-[160px]">
+                    Item / Mês
                   </th>
-                  <th className="text-right py-3 px-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Mês Anterior</th>
-                  <th className="text-right py-3 px-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Variação (%)</th>
+                  {historyMontlyData.map(m => (
+                    <th key={m.name} className="py-4 px-6 text-center text-xs font-black text-slate-400 uppercase tracking-widest min-w-[120px] capitalize">
+                      {m.name}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {historyMontlyData.map((month) => {
-                  const variation = month.previousTotal > 0 
-                    ? ((month.total - month.previousTotal) / month.previousTotal) * 100 
-                    : (month.total > 0 ? 100 : 0);
-                  
-                  const isGood = historyTopic === 'Gastos' ? variation <= 0 : variation >= 0;
-                  const absVar = Math.abs(variation);
-                  const isZeroToZero = month.previousTotal === 0 && month.total === 0;
-                  
-                  return (
-                    <tr key={month.name} className="border-b border-slate-50 hover:bg-slate-50/60 transition-colors group">
-                      <td className="py-4 px-4">
-                        <span className="font-bold text-slate-700 capitalize">{month.name}</span>
-                      </td>
-                      <td className="py-4 px-4 text-right">
-                        <span className={cn("font-bold text-base", historyTopic === 'Gastos' ? "text-red-500" : "text-emerald-600")}>
-                          {formatCurrency(month.total)}
-                        </span>
-                      </td>
-                      <td className="py-4 px-4 text-right">
-                        <span className="font-semibold text-slate-400">{formatCurrency(month.previousTotal)}</span>
-                      </td>
-                      <td className="py-4 px-4 text-right">
-                        {isZeroToZero ? (
-                          <span className="text-slate-300">-</span>
-                        ) : (
-                          <span className={cn("inline-flex items-center gap-1 font-bold px-2 py-1 rounded-md text-xs", 
-                            isGood ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"
-                          )}>
-                            {variation > 0 ? <TrendingUp className="w-3 h-3" /> : variation < 0 ? <TrendingDown className="w-3 h-3" /> : null}
-                            {variation > 0 ? "+" : ""}{absVar.toFixed(1)}%
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-              <tfoot>
-                <tr className="bg-slate-50 rounded-xl">
-                  <td className="py-4 px-4 font-bold text-slate-900">Total do Ano ({selectedYear})</td>
-                  <td className="py-4 px-4 text-right font-black text-lg">
-                    {formatCurrency(historyMontlyData.reduce((acc, m) => acc + m.total, 0))}
+                <tr className="hover:bg-slate-50/30 transition-colors group">
+                  <td className="py-5 px-6 font-bold text-slate-900 sticky left-0 bg-white group-hover:bg-slate-50 transition-colors z-10 border-r border-slate-100">
+                    {historyTopic === 'Gastos' ? 'Gastos Registrados' : 'Ganhos Registrados'}
                   </td>
-                  <td colSpan={2} className="py-4 px-4 text-right">
-                    <span className="text-xs text-slate-400 font-medium">Média mensal de {formatCurrency(historyMontlyData.reduce((acc, m) => acc + m.total, 0) / 12)}</span>
-                  </td>
+                  {historyMontlyData.map((month, i) => (
+                    <td key={i} className="py-5 px-6 text-center">
+                      <span className={cn("font-bold text-base", historyTopic === 'Gastos' ? "text-red-500" : "text-emerald-600")}>
+                        {formatCurrency(month.total)}
+                      </span>
+                    </td>
+                  ))}
                 </tr>
-              </tfoot>
+              </tbody>
             </table>
+          </div>
+
+          {/* Integrated: Monthly Totals Trend Chart with Variation Tooltip */}
+          <div className="mt-10 h-[200px] w-full px-4">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+              <LineChartIcon className="w-3 h-3" />
+              Evolução Mensal (Valores)
+            </p>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={historyChartData.map((m, i) => {
+                 const variation = m.previousTotal > 0 
+                  ? ((m.total - m.previousTotal) / m.previousTotal) * 100 
+                  : (m.total > 0 ? 100 : 0);
+                 const displayVariation = i === 0 ? 0 : variation;
+                 const isGood = historyTopic === 'Gastos' ? displayVariation <= 0 : displayVariation >= 0;
+                 return {
+                   name: m.name,
+                   shortName: m.name.substring(0, 3).toUpperCase(),
+                   amount: m.total,
+                   variation: Number(displayVariation.toFixed(1)),
+                   isGood
+                 };
+              })}>
+                <defs>
+                  <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.1}/>
+                    <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" strokeOpacity={0.5} />
+                <XAxis 
+                  dataKey="shortName" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 10, fill: "#94A3B8", fontWeight: 600 }} 
+                  dy={10}
+                />
+                <YAxis 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 10, fill: "#94A3B8" }}
+                  tickFormatter={(val) => `R$${val >= 1000 ? (val/1000).toFixed(1)+'k' : val}`}
+                />
+                <Tooltip 
+                  cursor={{ stroke: '#3B82F6', strokeWidth: 2, strokeDasharray: '5 5' }}
+                  content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                      const data = payload[0].payload;
+                      return (
+                        <div className="bg-white p-4 rounded-2xl shadow-2xl border border-slate-100 animate-in fade-in zoom-in duration-300 min-w-[160px]">
+                          <p className="text-[10px] font-black text-slate-400 mb-1 uppercase tracking-widest capitalize">{data.name}</p>
+                          <p className="text-lg font-black text-slate-900 mb-2">{formatCurrency(data.amount)}</p>
+                          <div className="flex items-center gap-2">
+                            <div className={cn(
+                              "flex items-center gap-1.5 font-bold px-3 py-1.5 rounded-full text-xs",
+                              data.isGood ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"
+                            )}>
+                              {data.variation > 0 ? <TrendingUp className="w-3 h-3" /> : data.variation < 0 ? <TrendingDown className="w-3 h-3" /> : null}
+                              {data.variation > 0 ? "+" : ""}{data.variation}%
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="amount" 
+                  stroke="#3B82F6" 
+                  strokeWidth={3} 
+                  fillOpacity={1} 
+                  fill="url(#colorAmount)" 
+                  dot={{ r: 4, strokeWidth: 2, fill: "#fff", stroke: "#3B82F6" }} 
+                  activeDot={{ r: 8, strokeWidth: 0, fill: "#3B82F6" }} 
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="mt-8 p-6 bg-slate-900 rounded-3xl text-white flex flex-col md:flex-row justify-between items-center gap-6 shadow-xl shadow-slate-200">
+            <div>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total do Ano ({selectedYear})</p>
+              <h4 className="text-4xl font-black text-white">
+                {formatCurrency(historyMontlyData.reduce((acc, m) => acc + m.total, 0))}
+              </h4>
+            </div>
+            <div className="text-right">
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1 text-slate-400">Média Mensal (Meses Concluídos)</p>
+              <p className="text-xl font-bold text-emerald-400">
+                {formatCurrency(monthlyAverage)}
+              </p>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -674,21 +755,21 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-          
+
           <div className="mt-8 pt-6 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-4">
-             <div className="flex items-center gap-4 text-sm text-slate-300">
-               <div className="flex items-center gap-2">
-                 <div className="w-3 h-3 rounded-full bg-emerald-500" />
-                 <span>Rendimento Passivo (Proventos): <strong>{formatCurrency(metrics.totalDividends)}</strong></span>
-               </div>
-             </div>
-             <a href="/investments" className="text-xs font-bold bg-white text-slate-900 px-6 py-2.5 rounded-full hover:bg-slate-100 transition-colors">
-               Ver Detalhes dos Ativos
-             </a>
+            <div className="flex items-center gap-4 text-sm text-slate-300">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-emerald-500" />
+                <span>Rendimento Passivo (Proventos): <strong>{formatCurrency(metrics.totalDividends)}</strong></span>
+              </div>
+            </div>
+            <a href="/investments" className="text-xs font-bold bg-white text-slate-900 px-6 py-2.5 rounded-full hover:bg-slate-100 transition-colors">
+              Ver Detalhes dos Ativos
+            </a>
           </div>
         </CardContent>
       </Card>
-      
+
     </div>
   );
 }
