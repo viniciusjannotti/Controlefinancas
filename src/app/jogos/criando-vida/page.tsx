@@ -56,6 +56,61 @@ function StatPill({
 
 // ─── Plant Visual ─────────────────────────────────────────────────────────────
 function PlantStage({ level }: { level: number }) {
+  const [period, setPeriod] = React.useState<'dawn' | 'day' | 'sunset' | 'night'>('day');
+
+  React.useEffect(() => {
+    const updatePeriod = () => {
+      const h = new Date().getHours();
+      if (h >= 5 && h < 8) setPeriod('dawn');
+      else if (h >= 8 && h < 17) setPeriod('day');
+      else if (h >= 17 && h < 19) setPeriod('sunset');
+      else setPeriod('night');
+    };
+    updatePeriod();
+    const interval = setInterval(updatePeriod, 1000 * 60); // Check every minute
+    return () => clearInterval(interval);
+  }, []);
+
+  const themes = {
+    dawn: {
+      sky: "bg-gradient-to-b from-[#FBC2EB] via-[#A6C1EE] to-[#FFD1FF]/40",
+      glow: "bg-pink-200/30",
+      sun: "bg-yellow-100/50",
+      mountain1: "text-indigo-900/20",
+      mountain2: "text-indigo-800/10",
+      particles: "bg-pink-200/40",
+      badge: "bg-pink-900/40"
+    },
+    day: {
+      sky: "bg-gradient-to-b from-[#4FACFE] via-[#00F2FE] to-[#E0C3FC]/30",
+      glow: "bg-sky-200/30",
+      sun: "bg-yellow-100/80 shadow-[0_0_100px_rgba(255,235,59,0.3)]",
+      mountain1: "text-slate-700/20",
+      mountain2: "text-slate-600/10",
+      particles: "bg-sky-100/40",
+      badge: "bg-sky-900/40"
+    },
+    sunset: {
+      sky: "bg-gradient-to-b from-[#0F172A] via-[#EA580C] to-[#FDE047]",
+      glow: "bg-amber-200/40",
+      sun: "bg-amber-100/60 shadow-[0_0_80px_rgba(251,191,36,0.4)]",
+      mountain1: "text-slate-900/60",
+      mountain2: "text-slate-800/40",
+      particles: "bg-emerald-300/40",
+      badge: "bg-slate-950/60"
+    },
+    night: {
+      sky: "bg-gradient-to-b from-[#020617] via-[#1E1B4B] to-[#312E81]",
+      glow: "bg-indigo-400/20",
+      sun: "bg-white/90 shadow-[0_0_60px_rgba(255,255,255,0.5)]", // Moon
+      mountain1: "text-black/60",
+      mountain2: "text-black/40",
+      particles: "bg-indigo-200/30",
+      badge: "bg-indigo-950/60"
+    }
+  };
+
+  const t = themes[period];
   const stages = [
     { emoji: "🌱", label: "Semente" },
     { emoji: "🌿", label: "Broto" },
@@ -66,53 +121,97 @@ function PlantStage({ level }: { level: number }) {
   const stage = stages[Math.min(level - 1, stages.length - 1)];
 
   return (
-    <div className="relative w-full h-[360px] rounded-3xl overflow-hidden shadow-inner border border-emerald-100/50 bg-slate-900">
-      {/* 1. Céu (Sky) - Sunset style for premium look */}
-      <div className="absolute inset-0 bg-gradient-to-b from-blue-400 via-orange-200 to-amber-100" />
+    <div className="relative w-full h-[460px] rounded-[3rem] overflow-hidden shadow-2xl border border-white/5 bg-slate-950 group">
+      {/* 1. Dynamic Atmosphere */}
+      <div className={cn("absolute inset-0 transition-colors duration-[3000ms] ease-in-out", t.sky)} />
+      
+      {/* 2. Night Stars (Only visible at night) */}
+      {period === 'night' && (
+        <div className="absolute inset-0 z-0">
+          {[...Array(40)].map((_, i) => (
+            <div 
+              key={i} 
+              className="absolute bg-white rounded-full animate-pulse"
+              style={{
+                width: Math.random() * 2 + 'px',
+                height: Math.random() * 2 + 'px',
+                top: Math.random() * 60 + '%',
+                left: Math.random() * 100 + '%',
+                animationDelay: Math.random() * 5 + 's',
+                opacity: Math.random() * 0.7 + 0.3
+              }}
+            />
+          ))}
+        </div>
+      )}
 
-      {/* 2. Sol/Luz ao fundo (Distant Light) */}
-      <div className="absolute top-10 left-1/4 w-32 h-32 bg-yellow-200/40 rounded-full blur-3xl animate-pulse" />
+      {/* 3. Celestial Body Glow */}
+      <div className={cn("absolute top-10 left-1/3 w-64 h-64 rounded-full blur-[100px] animate-pulse transition-all duration-[3000ms]", t.glow)} />
+      <div className={cn("absolute top-12 left-1/3 w-20 h-20 rounded-full transition-all duration-[3000ms] overflow-hidden flex items-center justify-center", t.sun)}>
+         {period === 'night' && <div className="absolute -top-2 -left-2 w-16 h-16 bg-black/10 rounded-full" />}
+      </div>
 
-      {/* 3. Montanhas (Mountains) - Layered silhouette */}
-      <svg
-        className="absolute bottom-24 left-0 w-full h-40 text-slate-500/20"
-        viewBox="0 0 1000 100"
-        preserveAspectRatio="none"
-      >
-        <path d="M0,100 L0,80 L150,40 L300,70 L500,20 L750,80 L900,30 L1000,70 L1000,100 Z" fill="currentColor" />
-        <path d="M0,100 L0,90 L200,60 L400,85 L600,45 L850,90 L1000,65 L1000,100 Z" fill="currentColor" opacity="0.5" />
+      {/* 4. Smooth Curvy Mountains */}
+      <svg className={cn("absolute bottom-36 left-0 w-full h-48 transition-colors duration-[3000ms]", t.mountain1)} viewBox="0 0 1000 100" preserveAspectRatio="none">
+        <path d="M0,100 Q150,10 300,80 T600,40 T1000,90 L1000,100 L0,100 Z" fill="currentColor" />
+      </svg>
+      <svg className={cn("absolute bottom-28 left-0 w-full h-40 transition-colors duration-[3000ms]", t.mountain2)} viewBox="0 0 1000 100" preserveAspectRatio="none">
+        <path d="M0,100 Q200,30 400,90 T800,50 T1000,80 L1000,100 L0,100 Z" fill="currentColor" />
       </svg>
 
-      {/* 4. Savana (Savanna Ground) - Textured golden plain */}
-      <div className="absolute bottom-0 left-0 w-full h-36 bg-gradient-to-t from-orange-300 via-amber-200 to-amber-100/20">
-        {/* Subtle grass particles or texture could go here in future */}
-        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_50%_0%,transparent_0%,rgba(0,0,0,0.2)_100%)]" />
-      </div>
-
-      {/* 5. Planta com brisa (Plant with breeze) */}
-      <div className="absolute bottom-14 left-1/2 -translate-x-1/2 flex flex-col items-center z-10">
-        <div className="relative">
-          {/* The Plant Emoji - Swaying! */}
-          <div className="text-9xl select-none animate-sway origin-bottom drop-shadow-xl filter drop-shadow-emerald-500/20">
-            {stage.emoji}
-          </div>
-          {/* Shadow on ground */}
-          <div className="w-20 h-4 bg-black/5 rounded-[100%] blur-[4px] mt-2 mx-auto" />
-        </div>
+      {/* 5. GROUND - Integrated Layers */}
+      <div className="absolute bottom-0 left-0 w-full h-40 z-20">
+        <div className="absolute bottom-0 w-full h-32 bg-gradient-to-t from-[#0A0705] to-[#1F140D] shadow-[inset_0_10px_20px_rgba(0,0,0,0.7)]" />
+        <div className={cn("absolute bottom-32 w-full h-8 bg-gradient-to-t from-[#1F140D] to-[#2D1E14] transition-opacity duration-[3000ms]", period === 'night' ? 'opacity-40' : 'opacity-100')} />
         
-        <div className="mt-8 text-center">
-          <p className="text-emerald-900 font-black text-2xl drop-shadow-sm tracking-tight">{stage.label}</p>
-          <div className="inline-flex items-center gap-1.5 bg-white/50 backdrop-blur-md px-4 py-1.5 rounded-full mt-3 border border-white/40 shadow-sm transition-all hover:bg-white/70">
-            <Sparkles className="w-4 h-4 text-emerald-600" />
-            <span className="text-xs font-bold text-emerald-800 uppercase tracking-widest">
-              Fase {level}
-            </span>
+        {/* THE PLANT */}
+        <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 transition-transform duration-500 hover:scale-105 active:scale-95">
+          <div className="relative">
+            <div className="text-[11rem] select-none animate-sway origin-bottom drop-shadow-[0_20px_25px_rgba(0,0,0,0.6)] contrast-125 saturate-150">
+              {stage.emoji}
+            </div>
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-24 h-6 bg-black/60 rounded-[100%] blur-[12px]" />
           </div>
+        </div>
+
+        {/* Foreground Mound Overlap */}
+        <div className="absolute bottom-0 w-full h-24 z-20 pointer-events-none">
+           <div className="absolute bottom-12 left-1/2 -translate-x-1/2 w-48 h-12 bg-[#0A0705] rounded-[100%] blur-[2px] shadow-2xl" />
+           <div className="absolute bottom-13 left-1/2 -translate-x-1/2 w-40 h-8 bg-[#1F140D] rounded-[100%] opacity-90" />
+           <div className="absolute bottom-14 left-[43%] w-4 h-3 bg-[#2D1E14] rounded-full rotate-12" />
+           <div className="absolute bottom-15 left-[54%] w-5 h-2.5 bg-[#1F140D] rounded-full -rotate-12" />
         </div>
       </div>
 
-      {/* Feature placeholders for future additions */}
-      {/* <div className="absolute bottom-10 left-10 w-24 h-8 bg-blue-400/20 rounded-full blur-md opacity-0 group-hover:opacity-100" />  LAKE */}
+      {/* 6. Dynamic Weather Particles */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-30">
+        {[...Array(15)].map((_, i) => (
+          <div 
+            key={i}
+            className={cn("absolute rounded-full animate-float-wind transition-colors duration-[3000ms]", t.particles)}
+            style={{
+              width: `${Math.random() * 5 + 3}px`,
+              height: `${Math.random() * 5 + 3}px`,
+              top: `${Math.random() * 80}%`,
+              left: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 10}s`,
+              animationDuration: `${Math.random() * 6 + 7}s`,
+              boxShadow: period === 'sunset' ? '0 0 12px rgba(110, 231, 183, 0.4)' : 'none'
+            }}
+          />
+        ))}
+      </div>
+
+      {/* 7. UI Overlay (Dynamic Text) */}
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-40 text-center w-full px-6">
+        <p className="text-white font-black text-4xl drop-shadow-[0_3px_6px_rgba(0,0,0,0.9)] tracking-tighter uppercase mb-4 transition-all">{stage.label}</p>
+        <div className={cn("inline-flex items-center gap-2 backdrop-blur-2xl px-6 py-2.5 rounded-2xl border border-white/10 shadow-2xl transition-all duration-[3000ms]", t.badge)}>
+          <Sparkles className={cn("w-5 h-5 animate-pulse", period === 'night' ? 'text-indigo-400' : 'text-amber-400')} />
+          <span className="text-[10px] font-black text-white uppercase tracking-[0.4em] drop-shadow-md">
+            MUNDO VIVO — NÍVEL {level}
+          </span>
+        </div>
+      </div>
     </div>
   );
 }

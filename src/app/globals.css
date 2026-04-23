@@ -134,3 +134,18 @@
   animation: float 6s ease-in-out infinite;
 }
 
+
+@keyframes float-wind {
+  0% { transform: translate(-20px, 0) rotate(0deg); opacity: 0; }
+  20% { opacity: 0.4; }
+  80% { opacity: 0.4; }
+  100% { transform: translate(100px, -40px) rotate(360deg); opacity: 0; }
+}
+
+.animate-float-wind {
+  animation: float-wind 10s linear infinite;
+}
+
+.animate-spin-slow {
+  animation: spin 12s linear infinite;
+}
