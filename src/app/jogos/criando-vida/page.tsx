@@ -79,7 +79,8 @@ function PlantStage({ level }: { level: number }) {
       mountain1: "text-indigo-900/20",
       mountain2: "text-indigo-800/10",
       particles: "bg-pink-200/40",
-      badge: "bg-pink-900/40"
+      badge: "bg-pink-900/40",
+      plantFilter: "brightness(0.8) saturate(1.2) sepia(0.2)"
     },
     day: {
       sky: "bg-gradient-to-b from-[#4FACFE] via-[#00F2FE] to-[#E0C3FC]/30",
@@ -88,7 +89,8 @@ function PlantStage({ level }: { level: number }) {
       mountain1: "text-slate-700/20",
       mountain2: "text-slate-600/10",
       particles: "bg-sky-100/40",
-      badge: "bg-sky-900/40"
+      badge: "bg-sky-900/40",
+      plantFilter: "brightness(1) contrast(1.1)"
     },
     sunset: {
       sky: "bg-gradient-to-b from-[#0F172A] via-[#EA580C] to-[#FDE047]",
@@ -97,7 +99,8 @@ function PlantStage({ level }: { level: number }) {
       mountain1: "text-slate-900/60",
       mountain2: "text-slate-800/40",
       particles: "bg-emerald-300/40",
-      badge: "bg-slate-950/60"
+      badge: "bg-slate-950/60",
+      plantFilter: "brightness(0.9) contrast(1.2) saturate(1.4) sepia(0.4) hue-rotate(-10deg)"
     },
     night: {
       sky: "bg-gradient-to-b from-[#020617] via-[#1E1B4B] to-[#312E81]",
@@ -106,7 +109,8 @@ function PlantStage({ level }: { level: number }) {
       mountain1: "text-black/60",
       mountain2: "text-black/40",
       particles: "bg-indigo-200/30",
-      badge: "bg-indigo-950/60"
+      badge: "bg-indigo-950/60",
+      plantFilter: "brightness(0.3) contrast(1.4) saturate(0.5) hue-rotate(210deg)"
     }
   };
 
@@ -124,13 +128,13 @@ function PlantStage({ level }: { level: number }) {
     <div className="relative w-full h-[460px] rounded-[3rem] overflow-hidden shadow-2xl border border-white/5 bg-slate-950 group">
       {/* 1. Dynamic Atmosphere */}
       <div className={cn("absolute inset-0 transition-colors duration-[3000ms] ease-in-out", t.sky)} />
-      
+
       {/* 2. Night Stars (Only visible at night) */}
       {period === 'night' && (
         <div className="absolute inset-0 z-0">
           {[...Array(40)].map((_, i) => (
-            <div 
-              key={i} 
+            <div
+              key={i}
               className="absolute bg-white rounded-full animate-pulse"
               style={{
                 width: Math.random() * 2 + 'px',
@@ -147,8 +151,8 @@ function PlantStage({ level }: { level: number }) {
 
       {/* 3. Celestial Body Glow */}
       <div className={cn("absolute top-10 left-1/3 w-64 h-64 rounded-full blur-[100px] animate-pulse transition-all duration-[3000ms]", t.glow)} />
-      <div className={cn("absolute top-12 left-1/3 w-20 h-20 rounded-full transition-all duration-[3000ms] overflow-hidden flex items-center justify-center", t.sun)}>
-         {period === 'night' && <div className="absolute -top-2 -left-2 w-16 h-16 bg-black/10 rounded-full" />}
+      <div className={cn("absolute top-12 left-1/3 w-16 h-16 rounded-full transition-all duration-[3000ms] overflow-hidden flex items-center justify-center", t.sun)}>
+        {period === 'night' && <div className="absolute -top-2 -left-2 w-16 h-16 bg-black/10 rounded-full" />}
       </div>
 
       {/* 4. Smooth Curvy Mountains */}
@@ -162,31 +166,42 @@ function PlantStage({ level }: { level: number }) {
       {/* 5. GROUND - Integrated Layers */}
       <div className="absolute bottom-0 left-0 w-full h-40 z-20">
         <div className="absolute bottom-0 w-full h-32 bg-gradient-to-t from-[#0A0705] to-[#1F140D] shadow-[inset_0_10px_20px_rgba(0,0,0,0.7)]" />
-        <div className={cn("absolute bottom-32 w-full h-8 bg-gradient-to-t from-[#1F140D] to-[#2D1E14] transition-opacity duration-[3000ms]", period === 'night' ? 'opacity-40' : 'opacity-100')} />
-        
-        {/* THE PLANT */}
-        <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 transition-transform duration-500 hover:scale-105 active:scale-95">
+        <div className={cn("absolute bottom-32 w-full h-8 bg-gradient-to-t from-[#1F140D] to-[#2D1E14] transition-all duration-[3000ms]", period === 'night' ? 'opacity-30' : 'opacity-100')} />
+
+        {/* THE PLANT (BRING TO FRONT) */}
+        <div
+          className="absolute bottom-[4.5rem] right-[55%] translate-x-1/2 z-30 transition-transform duration-500 hover:scale-110 active:scale-95"
+          style={{ transform: `translateX(50%) rotate(-12deg)` }}
+        >
           <div className="relative">
-            <div className="text-[11rem] select-none animate-sway origin-bottom drop-shadow-[0_20px_25px_rgba(0,0,0,0.6)] contrast-125 saturate-150">
+            {/* The Emoji with Ambient Filter and Sway */}
+            <div
+              className="text-7xl sm:text-8xl select-none animate-sway origin-bottom drop-shadow-[0_15px_15px_rgba(0,0,0,0.4)] transition-all duration-[3000ms]"
+              style={{ filter: t.plantFilter }}
+            >
               {stage.emoji}
             </div>
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-24 h-6 bg-black/60 rounded-[100%] blur-[12px]" />
+            {/* Contact shadow right at the base */}
+            <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-12 h-2.5 bg-black/80 rounded-[100%] blur-[6px]" />
           </div>
         </div>
 
-        {/* Foreground Mound Overlap */}
+        {/* Foreground Mound (NOW BEHIND THE PLANT) */}
         <div className="absolute bottom-0 w-full h-24 z-20 pointer-events-none">
-           <div className="absolute bottom-12 left-1/2 -translate-x-1/2 w-48 h-12 bg-[#0A0705] rounded-[100%] blur-[2px] shadow-2xl" />
-           <div className="absolute bottom-13 left-1/2 -translate-x-1/2 w-40 h-8 bg-[#1F140D] rounded-[100%] opacity-90" />
-           <div className="absolute bottom-14 left-[43%] w-4 h-3 bg-[#2D1E14] rounded-full rotate-12" />
-           <div className="absolute bottom-15 left-[54%] w-5 h-2.5 bg-[#1F140D] rounded-full -rotate-12" />
+          {/* Visual anchor for the plant base */}
+          <div className="absolute bottom-12 left-1/2 -translate-x-1/2 w-44 h-10 bg-[#0A0705] rounded-[100%] blur-[1.5px] shadow-2xl" />
+          <div className="absolute bottom-13 left-1/2 -translate-x-1/2 w-32 h-6 bg-[#1F140D] rounded-[100%] opacity-90 shadow-inner" />
+
+          {/* Simple dirt detail, no more green roots/grass */}
+          <div className="absolute bottom-14 left-[46%] w-3 h-2 bg-[#1F140D] rounded-full rotate-45" />
+          <div className="absolute bottom-15 left-[52%] w-4 h-2 bg-[#2D1E14] rounded-full -rotate-12" />
         </div>
       </div>
 
       {/* 6. Dynamic Weather Particles */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden z-30">
         {[...Array(15)].map((_, i) => (
-          <div 
+          <div
             key={i}
             className={cn("absolute rounded-full animate-float-wind transition-colors duration-[3000ms]", t.particles)}
             style={{
@@ -203,11 +218,11 @@ function PlantStage({ level }: { level: number }) {
       </div>
 
       {/* 7. UI Overlay (Dynamic Text) */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-40 text-center w-full px-6">
-        <p className="text-white font-black text-4xl drop-shadow-[0_3px_6px_rgba(0,0,0,0.9)] tracking-tighter uppercase mb-4 transition-all">{stage.label}</p>
-        <div className={cn("inline-flex items-center gap-2 backdrop-blur-2xl px-6 py-2.5 rounded-2xl border border-white/10 shadow-2xl transition-all duration-[3000ms]", t.badge)}>
-          <Sparkles className={cn("w-5 h-5 animate-pulse", period === 'night' ? 'text-indigo-400' : 'text-amber-400')} />
-          <span className="text-[10px] font-black text-white uppercase tracking-[0.4em] drop-shadow-md">
+      <div className="absolute top-8 right-8 z-40 text-right flex flex-col items-end gap-2">
+        <p className="text-white font-black text-4xl drop-shadow-[0_3px_6px_rgba(0,0,0,0.9)] tracking-tighter uppercase transition-all">{stage.label}</p>
+        <div className={cn("inline-flex items-center gap-2 backdrop-blur-2xl px-5 py-2 rounded-2xl border border-white/10 shadow-2xl transition-all duration-[3000ms]", t.badge)}>
+          <Sparkles className={cn("w-4 h-4 animate-pulse", period === 'night' ? 'text-indigo-400' : 'text-amber-400')} />
+          <span className="text-[10px] font-black text-white uppercase tracking-[0.3em] drop-shadow-md">
             MUNDO VIVO — NÍVEL {level}
           </span>
         </div>
