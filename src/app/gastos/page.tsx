@@ -14,7 +14,8 @@ import {
   MessageSquare,
   ArrowRight,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  X
 } from "lucide-react";
 import { format, addMonths, subMonths, isSameMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -119,6 +120,13 @@ export default function ExpensesPage() {
   const [loading, setLoading] = useState(true);
   const [editingExpense, setEditingExpense] = useState<any | null>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filters, setFilters] = useState({
+    category: "",
+    subcategory: "",
+    startDate: "",
+    endDate: ""
+  });
 
   const fetchExpenses = React.useCallback(async () => {
     setLoading(true);
@@ -160,7 +168,38 @@ export default function ExpensesPage() {
       : (typeof e.date === 'string' 
           ? new Date(e.date + 'T00:00:00') 
           : new Date(e.date));
-    return isSameMonth(d, currentMonth);
+    
+    // Search filter
+    const searchLower = searchTerm.toLowerCase();
+    const matchesSearch = !searchTerm || 
+      (e.description || "").toLowerCase().includes(searchLower) ||
+      (e.category || "").toLowerCase().includes(searchLower) ||
+      (e.method || "").toLowerCase().includes(searchLower);
+
+    // Category filter
+    const [catParent] = (e.category || "").split(" > ");
+    const matchesCategory = !filters.category || catParent === filters.category;
+    
+    // Subcategory filter
+    const catSub = (e.category || "").split(" > ")[1] || "";
+    const matchesSubcategory = !filters.subcategory || catSub === filters.subcategory;
+
+    // Date range filter
+    let matchesDate = true;
+    if (filters.startDate || filters.endDate) {
+      if (filters.startDate) {
+        const start = new Date(filters.startDate + 'T00:00:00');
+        if (d < start) matchesDate = false;
+      }
+      if (filters.endDate) {
+        const end = new Date(filters.endDate + 'T23:59:59');
+        if (d > end) matchesDate = false;
+      }
+    } else {
+      matchesDate = isSameMonth(d, currentMonth);
+    }
+
+    return matchesSearch && matchesCategory && matchesSubcategory && matchesDate;
   });
 
   const totalMonthly = filteredExpenses.reduce((acc: number, curr: any) => acc + (Number(curr.amount) || 0), 0);
@@ -214,6 +253,10 @@ export default function ExpensesPage() {
             loading={loading} 
             onDelete={handleDelete}
             onEdit={handleEdit}
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            filters={filters}
+            onFilterChange={setFilters}
           />
         </div>
 
@@ -239,14 +282,30 @@ function ExpensesTable({
   data, 
   loading, 
   onDelete, 
-  onEdit 
+  onEdit,
+  searchTerm,
+  onSearchChange,
+  filters,
+  onFilterChange
 }: { 
   data: any[], 
   loading: boolean,
   onDelete: (id: string) => void,
-  onEdit: (expense: any) => void
+  onEdit: (expense: any) => void,
+  searchTerm: string,
+  onSearchChange: (val: string) => void,
+  filters: any,
+  onFilterChange: (val: any) => void
 }) {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Get available subcategories for the selected category filter
+  const availableSubcategories = React.useMemo(() => {
+    if (!filters.category) return [];
+    const parent = categoryTree.find(c => c.label === filters.category);
+    return parent?.sub || [];
+  }, [filters.category]);
 
   if (loading) {
     return (
@@ -265,14 +324,116 @@ function ExpensesTable({
           <CardTitle>Histórico de Gastos</CardTitle>
           <CardDescription>Lista completa de gastos compartilhados.</CardDescription>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" className="h-9 px-3">
-            <Filter className="w-4 h-4 mr-2" />
-            Filtrar
-          </Button>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <div className="relative">
+            <Button 
+              variant={showFilters ? "secondary" : "outline"} 
+              className={cn("h-9 px-3", (filters.category || filters.subcategory || filters.startDate || filters.endDate) && "border-primary text-primary")}
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              <Filter className="w-4 h-4 mr-2" />
+              Filtrar
+              {(filters.category || filters.subcategory || filters.startDate || filters.endDate) && (
+                <span className="ml-2 w-2 h-2 rounded-full bg-primary"></span>
+              )}
+            </Button>
+
+            {showFilters && (
+              <div className="absolute right-0 top-full mt-2 z-50 w-72 bg-white rounded-xl shadow-xl border border-slate-200 p-4 animate-in fade-in zoom-in duration-200">
+                <div className="flex justify-between items-center mb-4">
+                  <h4 className="font-semibold text-sm">Filtros Avançados</h4>
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setShowFilters(false)}>
+                    <X className="w-3 h-3" />
+                  </Button>
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Categoria</Label>
+                    <select 
+                      className="w-full h-9 rounded-lg border border-slate-200 text-xs px-2"
+                      value={filters.category}
+                      onChange={(e) => onFilterChange({ ...filters, category: e.target.value, subcategory: "" })}
+                    >
+                      <option value="">Todas as Categorias</option>
+                      {categoryTree.map(c => (
+                        <option key={c.label} value={c.label}>{c.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {filters.category && availableSubcategories.length > 0 && (
+                    <div className="space-y-1.5 animate-in slide-in-from-top-1 duration-200">
+                      <Label className="text-xs">Subcategoria</Label>
+                      <select 
+                        className="w-full h-9 rounded-lg border border-slate-200 text-xs px-2"
+                        value={filters.subcategory}
+                        onChange={(e) => onFilterChange({ ...filters, subcategory: e.target.value })}
+                      >
+                        <option value="">Todas as Subcategorias</option>
+                        {availableSubcategories.map(s => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">De</Label>
+                      <Input 
+                        type="date" 
+                        className="h-9 text-xs px-2" 
+                        value={filters.startDate}
+                        onChange={(e) => onFilterChange({ ...filters, startDate: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Até</Label>
+                      <Input 
+                        type="date" 
+                        className="h-9 text-xs px-2" 
+                        value={filters.endDate}
+                        onChange={(e) => onFilterChange({ ...filters, endDate: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pt-2 flex gap-2">
+                    <Button 
+                      variant="ghost" 
+                      className="flex-1 h-8 text-xs"
+                      onClick={() => onFilterChange({ category: "", subcategory: "", startDate: "", endDate: "" })}
+                    >
+                      Limpar
+                    </Button>
+                    <Button 
+                      className="flex-1 h-8 text-xs"
+                      onClick={() => setShowFilters(false)}
+                    >
+                      Aplicar
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
           <div className="relative">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-            <Input placeholder="Buscar..." className="h-9 w-[200px] pl-9" />
+            <Input 
+              placeholder="Buscar..." 
+              className="h-9 w-[200px] pl-9" 
+              value={searchTerm}
+              onChange={(e) => onSearchChange(e.target.value)}
+            />
+            {searchTerm && (
+              <button 
+                className="absolute right-2 top-2.5 text-slate-400 hover:text-slate-600"
+                onClick={() => onSearchChange("")}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
       </CardHeader>
