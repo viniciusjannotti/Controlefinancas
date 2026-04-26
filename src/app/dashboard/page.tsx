@@ -33,10 +33,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { formatCurrency, cn } from "@/lib/utils";
 import React, { useState, useEffect } from "react";
 import { getEarnings, getExpenses, getInvestments, getDividends } from "@/lib/firebase/db";
+import { useAuth } from "@/lib/auth/AuthContext";
 import { startOfMonth, subMonths, format, isWithinInterval, parseISO, isSameMonth, addMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 export default function Dashboard() {
+  const { accountId } = useAuth();
   const [loading, setLoading] = useState(true);
   const [metrics, setMetrics] = useState({
     monthlyEarnings: 0,
@@ -58,30 +60,23 @@ export default function Dashboard() {
   const [allEarningsList, setAllEarningsList] = useState<any[]>([]);
 
   useEffect(() => {
+    if (!accountId) return;
     async function fetchData() {
       setLoading(true);
       try {
         const [
-          mariaEarnings,
-          viniciusEarnings,
+          allEarnings,
           allExpenses,
           mariaInvestments,
-          viniciusInvestments,
-          mariaDividends,
-          viniciusDividends
+          allDividends
         ] = await Promise.all([
-          getEarnings("maria") as Promise<any[]>,
-          getEarnings("vinicius") as Promise<any[]>,
-          getExpenses() as Promise<any[]>,
-          getInvestments("maria") as Promise<any[]>,
-          getInvestments("vinicius") as Promise<any[]>,
-          getDividends("maria") as Promise<any[]>,
-          getDividends("vinicius") as Promise<any[]>
+          getEarnings(accountId!) as Promise<any[]>,
+          getExpenses(accountId!) as Promise<any[]>,
+          getInvestments(accountId!) as Promise<any[]>,
+          getDividends(accountId!) as Promise<any[]>,
         ]);
 
-        const allEarnings = [...mariaEarnings, ...viniciusEarnings];
-        const allInvestments = [...mariaInvestments, ...viniciusInvestments];
-        const allDividends = [...mariaDividends, ...viniciusDividends];
+        const allInvestments = [...mariaInvestments];
 
         const now = new Date();
         const startOfCurrentMonth = startOfMonth(now);
@@ -156,7 +151,7 @@ export default function Dashboard() {
     }
 
     fetchData();
-  }, []);
+  }, [accountId]);
 
   const { categoryData, detailedCategoryData } = React.useMemo(() => {
     const expensesByCategory: Record<string, number> = {};

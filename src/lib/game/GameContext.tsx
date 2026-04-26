@@ -20,9 +20,7 @@ import {
   defaultGameData,
 } from "@/lib/game/types";
 import { getGameData, saveGameData, subscribeToGameData } from "@/lib/game/db";
-
-// ─── Shared user ID (replace with real auth uid when ready) ──────────────────
-const FAMILY_USER_ID = "family";
+import { useAuth } from "@/lib/auth/AuthContext";
 
 // ─── XP Rules (derived from catalog) ─────────────────────────────────────────
 const XP_RULES: Record<string, number> = Object.fromEntries(
@@ -119,6 +117,7 @@ function checkAchievements(
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
 export function GameProvider({ children }: { children: React.ReactNode }) {
+  const { accountId } = useAuth();
   const [gameData, setGameData] = useState<GameData>(defaultGameData);
   const [loading, setLoading] = useState(true);
   const [totalMissionsCompleted, setTotalMissionsCompleted] = useState(0);
@@ -133,16 +132,18 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   }), []);
 
   useEffect(() => {
-    const unsubscribe = subscribeToGameData(FAMILY_USER_ID, (data) => {
+    if (!accountId) return;
+    const unsubscribe = subscribeToGameData(accountId, (data) => {
       setGameData(data);
       setTotalMissionsCompleted(data.metadata.totalMissionsDone ?? 0);
       setLoading(false);
     });
     return () => unsubscribe();
-  }, []);
+  }, [accountId]);
 
   // ── addXP ─────────────────────────────────────────────────────────────────
   const addXP = useCallback(async (amount: number, source?: string) => {
+    if (!accountId) return;
     setGameData((prev) => {
       const streak = computeStreak(prev);
       const newXP = prev.xp + amount;
@@ -156,7 +157,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
       xpLog.current.push({ amount, source, timestamp: new Date().toISOString() });
 
-      saveGameData(FAMILY_USER_ID, {
+      saveGameData(accountId, {
         xp: updated.xp,
         level: updated.level,
         streak: updated.streak,
@@ -165,22 +166,24 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
       return updated;
     });
-  }, []);
+  }, [accountId]);
 
   const updateSocietyData = useCallback(async (updates: Partial<GameData['society']>) => {
+    if (!accountId) return;
     setGameData((prev) => {
       const updatedSociety = { ...prev.society, ...updates };
       const updated: GameData = { ...prev, society: updatedSociety };
       
-      saveGameData(FAMILY_USER_ID, { society: updatedSociety })
+      saveGameData(accountId, { society: updatedSociety })
         .catch(err => console.error("[GameContext] Failed to save society data:", err));
         
       return updated;
     });
-  }, []);
+  }, [accountId]);
 
   // ── Complete a mission by id ───────────────────────────────────────────────
   const completeMission = useCallback((missionId: string) => {
+    if (!accountId) return;
     setGameData((prev) => {
       const mission = prev.missions.find((m) => m.id === missionId);
       if (!mission || mission.isCompleted) return prev;
@@ -220,7 +223,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         lastUpdate: new Date().toISOString(),
       };
 
-      saveGameData(FAMILY_USER_ID, {
+      saveGameData(accountId, {
         xp: finalUpdated.xp,
         level: finalUpdated.level,
         streak: finalUpdated.streak,
@@ -232,10 +235,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
       return finalUpdated;
     });
-  }, [getCounters]);
+  }, [getCounters, accountId]);
 
   // ── onFinancialAction — dispatches XP + missions + achievements ───────────
   const onFinancialAction = useCallback((type: string, payload?: any) => {
+    if (!accountId) return;
     const xpAmount = XP_RULES[type] ?? 0;
 
     setGameData((prev) => {
@@ -302,7 +306,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
       xpLog.current.push({ amount: xpAmount + missionXP, source: type, timestamp: new Date().toISOString() });
 
-      saveGameData(FAMILY_USER_ID, {
+      saveGameData(accountId, {
         xp: updated.xp,
         level: updated.level,
         streak: updated.streak,
@@ -319,7 +323,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
       return updated;
     });
-  }, []);
+  }, [accountId]);
 
   return (
     <GameContext.Provider

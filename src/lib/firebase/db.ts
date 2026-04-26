@@ -14,22 +14,22 @@ import {
 } from "firebase/firestore";
 import { db } from "./config";
 
-// Earnings
-export const addEarning = async (userId: string, data: any) => {
+// ─── Earnings ─────────────────────────────────────────────────────────────────
+export const addEarning = async (userId: string, accountId: string, data: any) => {
   return await addDoc(collection(db, "earnings"), {
     ...data,
     userId,
+    accountId,
     createdAt: Timestamp.now(),
   });
 };
 
-export const getEarnings = async (userId: string) => {
+export const getEarnings = async (accountId: string) => {
   const q = query(
-    collection(db, "earnings"), 
-    where("userId", "==", userId)
+    collection(db, "earnings"),
+    where("accountId", "==", accountId)
   );
   const querySnapshot = await getDocs(q);
-  // Sort in JS to avoid composite index requirement
   return querySnapshot.docs
     .map(doc => ({ id: doc.id, ...doc.data() }))
     .sort((a: any, b: any) => (b.date || "").localeCompare(a.date || ""));
@@ -48,22 +48,25 @@ export const deleteEarning = async (id: string) => {
   await deleteDoc(docRef);
 };
 
-// Expenses
-export const addExpense = async (userId: string, data: any) => {
+// ─── Expenses ─────────────────────────────────────────────────────────────────
+export const addExpense = async (userId: string, accountId: string, data: any) => {
   return await addDoc(collection(db, "expenses"), {
     ...data,
     userId,
+    accountId,
     createdAt: Timestamp.now(),
   });
 };
 
-export const getExpenses = async () => {
+export const getExpenses = async (accountId: string) => {
   const q = query(
-    collection(db, "expenses"), 
-    orderBy("date", "desc")
+    collection(db, "expenses"),
+    where("accountId", "==", accountId)
   );
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  return querySnapshot.docs
+    .map(doc => ({ id: doc.id, ...doc.data() }))
+    .sort((a: any, b: any) => (b.date || "").localeCompare(a.date || ""));
 };
 
 export const updateExpense = async (id: string, data: any) => {
@@ -79,11 +82,12 @@ export const deleteExpense = async (id: string) => {
   await deleteDoc(docRef);
 };
 
-// Investments
-export const addInvestment = async (userId: string, data: any) => {
+// ─── Investments ──────────────────────────────────────────────────────────────
+export const addInvestment = async (userId: string, accountId: string, data: any) => {
   return await addDoc(collection(db, "investments"), {
     ...data,
     userId,
+    accountId,
     createdAt: Timestamp.now(),
   });
 };
@@ -109,46 +113,58 @@ export const deleteInvestment = async (id: string) => {
   await deleteDoc(docRef);
 };
 
-export const getInvestments = async (userId: string) => {
+export const getInvestments = async (accountId: string) => {
   const q = query(
-    collection(db, "investments"), 
-    where("userId", "==", userId)
+    collection(db, "investments"),
+    where("accountId", "==", accountId)
   );
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 };
 
-// Clients (Vinicius)
-export const addViniciusClient = async (name: string) => {
+// ─── Clients (Vinicius) ───────────────────────────────────────────────────────
+export const addViniciusClient = async (name: string, accountId: string) => {
   return await addDoc(collection(db, "vinicius_clients"), {
     name,
+    accountId,
     createdAt: Timestamp.now(),
   });
 };
 
-export const getViniciusClients = async () => {
-  const q = query(collection(db, "vinicius_clients"), orderBy("name", "asc"));
+export const getViniciusClients = async (accountId: string) => {
+  const q = query(
+    collection(db, "vinicius_clients"),
+    where("accountId", "==", accountId)
+  );
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  return querySnapshot.docs
+    .map(doc => ({ id: doc.id, ...doc.data() }))
+    .sort((a: any, b: any) => (a.name || "").localeCompare(b.name || ""));
 };
 
-// Clients (Maria Cecilia)
-export const addCeciliaClient = async (name: string) => {
+// ─── Clients (Maria Cecilia) ──────────────────────────────────────────────────
+export const addCeciliaClient = async (name: string, accountId: string) => {
   return await addDoc(collection(db, "cecilia_clients"), {
     name,
+    accountId,
     createdAt: Timestamp.now(),
   });
 };
 
-export const getCeciliaClients = async () => {
-  const q = query(collection(db, "cecilia_clients"), orderBy("name", "asc"));
+export const getCeciliaClients = async (accountId: string) => {
+  const q = query(
+    collection(db, "cecilia_clients"),
+    where("accountId", "==", accountId)
+  );
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  return querySnapshot.docs
+    .map(doc => ({ id: doc.id, ...doc.data() }))
+    .sort((a: any, b: any) => (a.name || "").localeCompare(b.name || ""));
 };
 
-// Settings
-export const getSettings = async () => {
-  const docRef = doc(db, "settings", "global");
+// ─── Settings ─────────────────────────────────────────────────────────────────
+export const getSettings = async (accountId: string) => {
+  const docRef = doc(db, "settings", accountId);
   const docSnap = await getDoc(docRef);
   if (docSnap.exists()) {
     return docSnap.data();
@@ -156,44 +172,51 @@ export const getSettings = async () => {
   return null;
 };
 
-export const updateSettings = async (data: any) => {
-  const docRef = doc(db, "settings", "global");
+export const updateSettings = async (accountId: string, data: any) => {
+  const docRef = doc(db, "settings", accountId);
   await setDoc(docRef, data, { merge: true });
 };
 
-// Reminders
-export const addReminder = async (data: any) => {
+// ─── Reminders ────────────────────────────────────────────────────────────────
+export const addReminder = async (accountId: string, data: any) => {
   return await addDoc(collection(db, "reminders"), {
     ...data,
+    accountId,
     createdAt: Timestamp.now(),
   });
 };
 
-export const getReminders = async () => {
-  const q = query(collection(db, "reminders"), orderBy("dueDay", "asc"));
+export const getReminders = async (accountId: string) => {
+  const q = query(
+    collection(db, "reminders"),
+    where("accountId", "==", accountId)
+  );
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  return querySnapshot.docs
+    .map(doc => ({ id: doc.id, ...doc.data() }))
+    .sort((a: any, b: any) => (a.dueDay || 0) - (b.dueDay || 0));
 };
 
 export const deleteReminder = async (id: string) => {
   await deleteDoc(doc(db, "reminders", id));
 };
-// Dividends / Proventos
-export const addDividend = async (userId: string, data: any) => {
+
+// ─── Dividends / Proventos ────────────────────────────────────────────────────
+export const addDividend = async (userId: string, accountId: string, data: any) => {
   return await addDoc(collection(db, "dividends"), {
     ...data,
     userId,
+    accountId,
     createdAt: Timestamp.now(),
   });
 };
 
-export const getDividends = async (userId: string) => {
+export const getDividends = async (accountId: string) => {
   const q = query(
-    collection(db, "dividends"), 
-    where("userId", "==", userId)
+    collection(db, "dividends"),
+    where("accountId", "==", accountId)
   );
   const querySnapshot = await getDocs(q);
-  // Sort in JS to avoid composite index requirement
   return querySnapshot.docs
     .map(doc => ({ id: doc.id, ...doc.data() }))
     .sort((a: any, b: any) => (b.date || "").localeCompare(a.date || ""));

@@ -56,6 +56,7 @@ import {
 } from "@/lib/firebase/db";
 import { fetchStockPrices } from "@/lib/stockApi";
 import { useGame } from "@/lib/game/GameContext";
+import { useAuth } from "@/lib/auth/AuthContext";
 
 const assetTypes = ["Ações", "FIIs", "ETFs", "Fundos de Investimento", "Renda Fixa", "Crypto", "Outros"];
 const dividendTypes = ["Dividendo", "JCP", "Rendimento", "Outro"];
@@ -124,6 +125,7 @@ function consolidateInvestments(investments: any[], dividends: any[]) {
 // Main Page
 // ──────────────────────────────────────
 export default function InvestmentsPage() {
+  const { accountId } = useAuth();
   const [activeTab, setActiveTab] = useState("maria");
   const [investments, setInvestments] = useState<any[]>([]);
   const [dividends, setDividends] = useState<any[]>([]);
@@ -136,11 +138,12 @@ export default function InvestmentsPage() {
   const [selectedAsset, setSelectedAsset] = useState<any | null>(null);
 
   const fetchData = React.useCallback(async () => {
+    if (!accountId) return;
     setLoading(true);
     try {
       const [invData, divData] = await Promise.all([
-        getInvestments(activeTab),
-        getDividends(activeTab)
+        getInvestments(accountId),
+        getDividends(accountId)
       ]);
       setInvestments(invData);
       setDividends(divData);
@@ -149,7 +152,7 @@ export default function InvestmentsPage() {
     } finally {
       setLoading(false);
     }
-  }, [activeTab]);
+  }, [activeTab, accountId]);
 
   const handleRefreshQuotes = async () => {
     const tickers = investments
@@ -630,6 +633,7 @@ function DetailStat({ label, value, subtitle, color = "text-slate-900", bg = "bg
 function AddDividendForm({ asset, userId, onSave, onCancel }: any) {
   const [loading, setLoading] = useState(false);
   const { onFinancialAction } = useGame();
+  const { accountId } = useAuth();
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     amount: "",
@@ -640,9 +644,10 @@ function AddDividendForm({ asset, userId, onSave, onCancel }: any) {
 
   const handleSubmit = async () => {
     if (!formData.amount || Number(formData.amount) <= 0) { alert("Informe um valor válido."); return; }
+    if (!accountId) return;
     setLoading(true);
     try {
-      await addDividend(userId, { ...formData, amount: Number(formData.amount) });
+      await addDividend(userId, accountId, { ...formData, amount: Number(formData.amount) });
       onFinancialAction("dividend_added");
       onSave();
     } catch (error) {
@@ -686,6 +691,7 @@ function AddDividendForm({ asset, userId, onSave, onCancel }: any) {
 function AddInvestmentForm({ type, onSave, onCancel, editingInvestment, isContribution }: any) {
   const [loading, setLoading] = useState(false);
   const { onFinancialAction } = useGame();
+  const { accountId } = useAuth();
   const defaultForm = { name: "", ticker: "", assetType: "Ações", broker: "", quantity: "", purchasePrice: "", invested: "", currentValue: "", date: new Date().toISOString().split('T')[0] };
   const [formData, setFormData] = useState(defaultForm);
   React.useEffect(() => {
@@ -706,6 +712,7 @@ function AddInvestmentForm({ type, onSave, onCancel, editingInvestment, isContri
     const pPrice = Number(formData.purchasePrice) || 0;
     const manualInvested = Number(formData.invested) || 0;
     if (!formData.name) { alert("Nome obrigatório"); return; }
+    if (!accountId) return;
     setLoading(true);
     try {
       const payload = { ...formData, ticker: (formData.ticker || "").toUpperCase().trim(), quantity: qty || 1, 
@@ -714,7 +721,7 @@ function AddInvestmentForm({ type, onSave, onCancel, editingInvestment, isContri
       };
       if (editingInvestment && !isContribution) { await updateInvestment(editingInvestment.id, payload); }
       else { 
-        await addInvestment(type, payload); 
+        await addInvestment(type, accountId, payload); 
         onFinancialAction("investment_added");
       }
       onSave();

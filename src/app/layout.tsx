@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { NotificationsDropdown } from "@/components/NotificationsDropdown";
 import { GameProvider } from "@/lib/game/GameContext";
 import { ClientLayout } from "@/components/ClientLayout";
-import { Sidebar } from "@/components/Sidebar";
+import { AuthProvider } from "@/lib/auth/AuthContext";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -29,11 +28,13 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <body className={`${inter.className} min-h-screen bg-slate-50`}>
-        <GameProvider>
-          <ClientLayout>
-            {children}
-          </ClientLayout>
-        </GameProvider>
+        <AuthProvider>
+          <GameProvider>
+            <ClientLayout>
+              {children}
+            </ClientLayout>
+          </GameProvider>
+        </AuthProvider>
       </body>
     </html>
   );

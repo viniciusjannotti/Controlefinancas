@@ -43,6 +43,7 @@ import { formatCurrency, formatDate, cn } from "@/lib/utils";
 import { addExpense, getExpenses, updateExpense, deleteExpense } from "@/lib/firebase/db";
 // import { toast } from "sonner";
 import { useGame } from "@/lib/game/GameContext";
+import { useAuth } from "@/lib/auth/AuthContext";
 
 // Hierarchical categories matching the household budget structure
 const categoryTree: { label: string; sub?: string[] }[] = [
@@ -116,6 +117,7 @@ const pieData = Object.entries(
 ).map(([name, value]) => ({ name, value, color: categoryColors[name] || "#CBD5E1" }));
 
 export default function ExpensesPage() {
+  const { accountId } = useAuth();
   const [expenses, setExpenses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingExpense, setEditingExpense] = useState<any | null>(null);
@@ -129,16 +131,17 @@ export default function ExpensesPage() {
   });
 
   const fetchExpenses = React.useCallback(async () => {
+    if (!accountId) return;
     setLoading(true);
     try {
-      const data = await getExpenses();
+      const data = await getExpenses(accountId);
       setExpenses(data);
     } catch (error) {
       console.error("Erro ao buscar despesas:", error);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [accountId]);
 
   React.useEffect(() => {
     fetchExpenses();
@@ -543,6 +546,7 @@ function AddExpenseForm({
   });
   const [installments, setInstallments] = useState(1);
   const { onFinancialAction } = useGame();
+  const { accountId } = useAuth();
 
   React.useEffect(() => {
     if (editingExpense) {
@@ -614,7 +618,7 @@ function AddExpenseForm({
               amount: dividedAmount,
               method: formData.method
             };
-            await addExpense(formData.userId, data);
+            await addExpense(formData.userId, accountId!, data);
           }
         } else {
           const data = {
@@ -624,7 +628,7 @@ function AddExpenseForm({
             amount: Number(formData.amount),
             method: formData.method
           };
-          await addExpense(formData.userId, data);
+          await addExpense(formData.userId, accountId!, data);
         }
         onFinancialAction("expense_created");
       }

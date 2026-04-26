@@ -7,6 +7,7 @@ import { ptBR } from "date-fns/locale";
 import { getReminders, addReminder, deleteReminder, getEarnings, getExpenses } from "@/lib/firebase/db";
 import { Button, Input, Label } from "@/components/ui/index";
 import { cn, formatCurrency } from "@/lib/utils";
+import { useAuth } from "@/lib/auth/AuthContext";
 
 type Reminder = {
   id?: string;
@@ -18,6 +19,7 @@ type Reminder = {
 };
 
 export function NotificationsDropdown() {
+  const { accountId } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [reminders, setReminders] = useState<Reminder[]>([]);
@@ -46,27 +48,27 @@ export function NotificationsDropdown() {
   }, []);
 
   const fetchData = React.useCallback(async () => {
+    if (!accountId) return;
     setLoading(true);
     try {
-      const [fetchedReminders, mEarnings, vEarnings, expenses] = await Promise.all([
-        getReminders(),
-        getEarnings("maria"),
-        getEarnings("vinicius"),
-        getExpenses()
+      const [fetchedReminders, allEarningsRaw, expenses] = await Promise.all([
+        getReminders(accountId),
+        getEarnings(accountId),
+        getExpenses(accountId)
       ]);
 
-      const allEarnings = [...mEarnings, ...vEarnings] as any[];
+      const allEarnings = (allEarningsRaw as any[]);
       const allExpenses = expenses as any[];
       const now = new Date();
       const currentDay = now.getDate();
 
       // Filter transactions to current month only
-      const currentMonthEarnings = allEarnings.filter(e => {
+      const currentMonthEarnings = allEarnings.filter((e: any) => {
         const d = e.date?.seconds ? new Date(e.date.seconds * 1000) : new Date(e.date + 'T00:00:00');
         return isSameMonth(d, now);
       });
       
-      const currentMonthExpenses = allExpenses.filter(e => {
+      const currentMonthExpenses = allExpenses.filter((e: any) => {
         const d = e.date?.seconds ? new Date(e.date.seconds * 1000) : new Date(e.date + 'T00:00:00');
         return isSameMonth(d, now);
       });
@@ -80,9 +82,9 @@ export function NotificationsDropdown() {
         const matchName = (txName: string = "") => txName.toLowerCase().includes(reminder.name.toLowerCase());
 
         if (reminder.type === "ganho") {
-          isPaid = currentMonthEarnings.some(e => matchName(e.patient || e.description || e.service));
+          isPaid = currentMonthEarnings.some((e: any) => matchName(e.patient || e.description || e.service));
         } else {
-          isPaid = currentMonthExpenses.some(e => matchName(e.category || e.description));
+          isPaid = currentMonthExpenses.some((e: any) => matchName(e.category || e.description));
         }
 
         if (!isPaid) {
@@ -107,7 +109,7 @@ export function NotificationsDropdown() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [accountId]);
 
   useEffect(() => {
     if (isOpen) {
@@ -119,10 +121,10 @@ export function NotificationsDropdown() {
   }, [isOpen, fetchData]);
 
   const handleSave = async () => {
-    if (!formData.name) return alert("Preencha o nome do lembrete.");
+    if (!formData.name || !accountId) return alert("Preencha o nome do lembrete.");
     try {
       setLoading(true);
-      await addReminder(formData);
+      await addReminder(accountId, formData);
       setShowForm(false);
       setFormData({ name: "", type: "gasto", dueDay: 10, notifyDaysBefore: 5, userId: "familia" });
       fetchData();

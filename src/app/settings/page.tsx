@@ -9,7 +9,9 @@ import {
   Database, 
   CreditCard,
   LogOut,
-  ChevronRight
+  ChevronRight,
+  Copy,
+  Check
 } from "lucide-react";
 import { 
   Card, 
@@ -24,24 +26,24 @@ import {
   Label 
 } from "@/components/ui/index";
 import { cn } from "@/lib/utils";
-
 import { getSettings, updateSettings } from "@/lib/firebase/db";
+import { useAuth } from "@/lib/auth/AuthContext";
 
 export default function SettingsPage() {
-  const [loading, setLoading] = useState(true);
+  const { user, accountId, userName, signOut } = useAuth();
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [formData, setFormData] = useState({
     user1: "Maria Cecília",
     user2: "Vinícius",
-    email: "familia@exemplo.com",
-    apiKey: "",
-    projectId: ""
   });
 
   const fetchSettings = React.useCallback(async () => {
+    if (!accountId) return;
     setLoading(true);
     try {
-      const data = await getSettings();
+      const data = await getSettings(accountId);
       if (data) {
         setFormData(prev => ({
           ...prev,
@@ -53,19 +55,19 @@ export default function SettingsPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [accountId]);
 
   React.useEffect(() => {
     fetchSettings();
   }, [fetchSettings]);
 
   const handleSaveInfo = async () => {
+    if (!accountId) return;
     setSaving(true);
     try {
-      await updateSettings({
+      await updateSettings(accountId, {
         user1: formData.user1,
         user2: formData.user2,
-        email: formData.email
       });
       alert("Informações atualizadas com sucesso!");
     } catch (error) {
@@ -76,29 +78,19 @@ export default function SettingsPage() {
     }
   };
 
-  const handleSaveFirebase = async () => {
-    setSaving(true);
-    try {
-      await updateSettings({
-        apiKey: formData.apiKey,
-        projectId: formData.projectId
-      });
-      alert("Configurações do Firebase atualizadas!");
-    } catch (error) {
-      console.error("Erro ao salvar firebase:", error);
-      alert("Erro ao salvar configurações do Firebase.");
-    } finally {
-      setSaving(false);
+  const handleCopyAccountId = () => {
+    if (accountId) {
+      navigator.clipboard.writeText(accountId);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex h-[400px] items-center justify-center">
-        <p className="text-slate-500">Carregando configurações...</p>
-      </div>
-    );
-  }
+  const handleSignOut = async () => {
+    if (confirm("Tem certeza que deseja sair?")) {
+      await signOut();
+    }
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -115,7 +107,11 @@ export default function SettingsPage() {
           <SettingsNavLink icon={Database} label="Dados & Firebase" />
           <SettingsNavLink icon={CreditCard} label="Plano" />
           <div className="pt-4 mt-4 border-t border-slate-200">
-            <Button variant="ghost" className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-50">
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-50"
+              onClick={handleSignOut}
+            >
               <LogOut className="w-4 h-4 mr-3" />
               Sair da Conta
             </Button>
@@ -123,79 +119,89 @@ export default function SettingsPage() {
         </div>
 
         <div className="md:col-span-3 space-y-6">
+          {/* Logged-in user info */}
           <Card>
             <CardHeader>
-              <CardTitle>Informações do Casal</CardTitle>
-              <CardDescription>Atualize os nomes e detalhes que aparecem no sistema.</CardDescription>
+              <CardTitle>Usuário Atual</CardTitle>
+              <CardDescription>Suas informações de login.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="user1">Usuário 1</Label>
-                  <Input 
-                    id="user1" 
-                    value={formData.user1} 
-                    onChange={(e) => setFormData({ ...formData, user1: e.target.value })}
-                  />
+              <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl">
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg">
+                  {(userName || user?.email || "?")[0].toUpperCase()}
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="user2">Usuário 2</Label>
-                  <Input 
-                    id="user2" 
-                    value={formData.user2} 
-                    onChange={(e) => setFormData({ ...formData, user2: e.target.value })}
-                  />
+                <div>
+                  <p className="font-semibold text-slate-900">{userName || "Usuário"}</p>
+                  <p className="text-sm text-slate-500">{user?.email}</p>
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">E-mail da Família</Label>
-                <Input 
-                  id="email" 
-                  value={formData.email} 
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                />
-              </div>
-              <Button onClick={handleSaveInfo} disabled={saving}>
-                {saving ? "Salvando..." : "Salvar Alterações"}
-              </Button>
             </CardContent>
           </Card>
 
+          {/* Account sharing */}
           <Card>
             <CardHeader>
-              <CardTitle>Configuração do Firebase</CardTitle>
-              <CardDescription>Para conectar ao seu banco de dados, insira suas chaves aqui ou use o arquivo .env.local.</CardDescription>
+              <CardTitle>Compartilhar Conta</CardTitle>
+              <CardDescription>
+                Compartilhe este código com outros usuários para que acessem os mesmos dados.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="p-4 bg-amber-50 rounded-xl border border-amber-100 flex gap-3 items-start">
-                <SettingsIcon className="w-5 h-5 text-amber-600 mt-0.5" />
-                <div>
-                  <p className="text-sm font-semibold text-amber-900">Estado da Conexão</p>
-                  <p className="text-sm text-amber-700">Conectado ao Firestore. Os dados serão persistidos no seu projeto.</p>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="apikey">API Key</Label>
-                <Input 
-                  id="apikey" 
-                  type="password" 
-                  placeholder="••••••••••••••••••••" 
-                  value={formData.apiKey}
-                  onChange={(e) => setFormData({ ...formData, apiKey: e.target.value })}
+              <div className="flex items-center gap-2">
+                <Input
+                  readOnly
+                  value={accountId || "Carregando..."}
+                  className="font-mono text-sm bg-slate-50"
                 />
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  className={cn("shrink-0 transition-colors", copied && "border-emerald-500 text-emerald-600")}
+                  onClick={handleCopyAccountId}
+                >
+                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                </Button>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="projectid">Project ID</Label>
-                <Input 
-                  id="projectid" 
-                  placeholder="controlefinancas-123" 
-                  value={formData.projectId}
-                  onChange={(e) => setFormData({ ...formData, projectId: e.target.value })}
-                />
-              </div>
-              <Button variant="outline" onClick={handleSaveFirebase} disabled={saving}>
-                {saving ? "Salvando..." : "Salvar Configurações"}
-              </Button>
+              <p className="text-xs text-slate-500">
+                O segundo usuário deve criar uma conta e, ao se cadastrar, marcar a opção "Entrar em uma conta existente" e colar este código.
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Names config */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Informações do Casal</CardTitle>
+              <CardDescription>Atualize os nomes que aparecem no sistema.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {loading ? (
+                <p className="text-slate-400 text-sm">Carregando...</p>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="user1">Usuário 1</Label>
+                      <Input 
+                        id="user1" 
+                        value={formData.user1} 
+                        onChange={(e) => setFormData({ ...formData, user1: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="user2">Usuário 2</Label>
+                      <Input 
+                        id="user2" 
+                        value={formData.user2} 
+                        onChange={(e) => setFormData({ ...formData, user2: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <Button onClick={handleSaveInfo} disabled={saving}>
+                    {saving ? "Salvando..." : "Salvar Alterações"}
+                  </Button>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>

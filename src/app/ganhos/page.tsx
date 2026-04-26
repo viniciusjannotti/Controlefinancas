@@ -45,8 +45,10 @@ import {
 } from "@/lib/firebase/db";
 // import { toast } from "sonner"; 
 import { useGame } from "@/lib/game/GameContext";
+import { useAuth } from "@/lib/auth/AuthContext";
 
 export default function EarningsPage() {
+  const { accountId } = useAuth();
   const [activeTab, setActiveTab] = useState("maria");
   const [earnings, setEarnings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,16 +56,17 @@ export default function EarningsPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   const fetchEarnings = React.useCallback(async () => {
+    if (!accountId) return;
     setLoading(true);
     try {
-      const data = await getEarnings(activeTab);
+      const data = await getEarnings(accountId);
       setEarnings(data);
     } catch (error) {
       console.error("Erro ao buscar ganhos:", error);
     } finally {
       setLoading(false);
     }
-  }, [activeTab]);
+  }, [activeTab, accountId]);
 
   React.useEffect(() => {
     fetchEarnings();
@@ -314,15 +317,17 @@ function AddEarningsForm({
   const [newClient, setNewClient] = useState("");
   const [showAddClient, setShowAddClient] = useState(false);
   const { onFinancialAction } = useGame();
+  const { accountId } = useAuth();
 
   const fetchClients = React.useCallback(async () => {
+    if (!accountId) return;
     try {
-      const data = type === "vinicius" ? await getViniciusClients() : await getCeciliaClients();
+      const data = type === "vinicius" ? await getViniciusClients(accountId) : await getCeciliaClients(accountId);
       setClients(data);
     } catch (error) {
       console.error("Erro ao buscar clientes:", error);
     }
-  }, [type]);
+  }, [type, accountId]);
 
   React.useEffect(() => {
     fetchClients();
@@ -366,13 +371,13 @@ function AddEarningsForm({
   }, [editingEarning]);
 
   const addClient = async () => {
-    if (newClient) {
+    if (newClient && accountId) {
       setLoading(true);
       try {
         if (type === "vinicius") {
-          await addViniciusClient(newClient);
+          await addViniciusClient(newClient, accountId);
         } else {
-          await addCeciliaClient(newClient);
+          await addCeciliaClient(newClient, accountId);
         }
         await fetchClients();
         setFormData({ ...formData, name: newClient });
@@ -399,7 +404,8 @@ function AddEarningsForm({
       if (editingEarning) {
         await updateEarning(editingEarning.id, data);
       } else {
-        await addEarning(type, data);
+        if (!accountId) return;
+        await addEarning(type, accountId, data);
         onFinancialAction("income_added");
       }
       setFormData(defaultForm);
