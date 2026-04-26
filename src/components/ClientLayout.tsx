@@ -7,6 +7,7 @@ import { MobileHeader } from "@/components/MobileHeader";
 import { NotificationsDropdown } from "@/components/NotificationsDropdown";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { Wallet } from "lucide-react";
+import { PWAIconManager } from "@/components/PWAIconManager";
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -51,6 +52,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen">
+      <PWAIconManager />
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       
       <div className="flex-1 flex flex-col min-w-0">

@@ -10,7 +10,11 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "M & V Finanças | Gestão Financeira",
   description: "Sistema de gestão financeira para o casal Maria Cecília e Vinícius",
-  manifest: "/manifest.json",
+  manifest: "/api/pwa/manifest",
+  icons: {
+    icon: "/api/pwa/icon",
+    apple: "/api/pwa/icon",
+  },
   themeColor: "#0f172a",
   viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0",
   appleWebApp: {

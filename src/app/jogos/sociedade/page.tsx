@@ -101,7 +101,7 @@ function ProgressBar({
 }
 
 // ─── Modal de Regras ─────────────────────────────────────────────────────────
-function RulesModal({ onClose }: { onClose: () => void }) {
+function RulesModal({ onClose, hasTransitioned }: { onClose: () => void; hasTransitioned: boolean }) {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       {/* Backdrop */}
@@ -118,8 +118,10 @@ function RulesModal({ onClose }: { onClose: () => void }) {
                 <BookOpen className="w-5 h-5" />
               </div>
               <div>
-                <h2 className="text-xl font-black">Regras de Sociedade</h2>
-                <p className="text-indigo-100 text-sm">Entenda como manter seu organismo vivo</p>
+                <h2 className="text-xl font-black">Manual da Sociedade</h2>
+                <p className="text-indigo-100 text-sm">
+                  {hasTransitioned ? "A consciência expandida e o outro" : "Entenda como manter seu organismo vivo"}
+                </p>
               </div>
             </div>
             <button
@@ -139,7 +141,11 @@ function RulesModal({ onClose }: { onClose: () => void }) {
             <div className="flex items-start gap-2 bg-indigo-50 border border-indigo-100 rounded-2xl p-4 text-sm text-indigo-800">
               <Info className="w-5 h-5 mt-0.5 shrink-0" />
               <span>
-                Esta é a <b>Fase 1: Sobrevivência</b>. O objetivo é manter sua saciedade alta utilizando a <b>Energia</b> enviada por fontes externas (seu progresso financeiro). Múltiplas explorações secretamente desbloqueiam sabedoria para evoluir. Cuidado: chegar a Zero de Saciedade apagará todos os instintos adquiridos de seu organismo.
+                {hasTransitioned ? (
+                  <>Você transcendeu a <b>Fase 1</b>. Agora, além de sobreviver, seu organismo busca conexão. Explore o novo ecossistema para encontrar outros seres e descobrir novas formas de interação.</>
+                ) : (
+                  <>Esta é a <b>Fase 1: Sobrevivência</b>. O objetivo é manter sua saciedade alta utilizando a <b>Energia</b> enviada por fontes externas (seu progresso financeiro). Múltiplas explorações secretamente desbloqueiam sabedoria para evoluir. Cuidado: chegar a Zero de Saciedade apagará todos os instintos adquiridos de seu organismo.</>
+                )}
               </span>
             </div>
           </div>
@@ -184,7 +190,9 @@ export default function SociedadePage() {
     satiety, 
     hiddenExp, 
     hasTransitioned, 
-    lastPassiveDrainUpdate 
+    lastPassiveDrainUpdate,
+    socialDiscovery,
+    interactionPhase
   } = gameData.society;
 
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -315,6 +323,8 @@ export default function SociedadePage() {
     let nextEnergy = energy - 3;
     let nextSatiety = satiety;
     let nextHasTransitioned = hasTransitioned;
+    let nextSocialDiscovery = socialDiscovery;
+    let nextInteractionPhase = interactionPhase;
 
     triggerAnim("anim-explore");
 
@@ -322,19 +332,38 @@ export default function SociedadePage() {
       addLog(`✨ Brilhante! O organismo se tornou um ser: ${newRank.title}. Suas chances em exploração aumentaram.`, "positive");
     }
 
-    // Phase transition roll
-    const roll = Math.random();
-    if (newRank.phaseChance > 0 && roll < newRank.phaseChance) {
-      nextHasTransitioned = true;
+    // Phase transition roll (Initial Transcendence)
+    if (!hasTransitioned) {
+      const roll = Math.random();
+      if (newRank.phaseChance > 0 && roll < newRank.phaseChance) {
+        nextHasTransitioned = true;
+        addLog("🌌 Um novo nível de percepção foi atingido. O mundo parece diferente...", "positive");
+      }
+    }
+
+    // Phase 2: Social Discovery (Only after transition and if not yet discovered)
+    if (hasTransitioned && !socialDiscovery) {
+      const socialRoll = Math.random();
+      // 10% chance to find another organism while exploring after transition
+      if (socialRoll < 0.15) {
+        nextSocialDiscovery = true;
+        nextInteractionPhase = 'discovered';
+        addLog("👀 Seus instintos captam algo incomum. Existe outro rastro... um outro ser?", "positive");
+      }
+    }
+
+    // Standard Events
+    const eventRoll = Math.random();
+    if (eventRoll < (hasTransitioned ? newRank.foodChance + 0.1 : newRank.foodChance)) {
+      nextSatiety = Math.min(100, satiety + 10);
+      addLog("Graças à sua percepção, encontrou nutrientes de qualidade!", "positive");
+    } else if (eventRoll > 0.90) { // Slight penalty decrease after transition
+      nextSatiety = Math.max(0, satiety - 10);
+      addLog("Esbarrou em um obstáculo duro ou predador. Perdeu energia vital.", "negative");
     } else {
-      // Sorteio Simples Escalonado
-      const eventRoll = Math.random();
-      if (eventRoll < newRank.foodChance) {
-        nextSatiety = Math.min(100, satiety + 10);
-        addLog("Graças à sua percepção, encontrou nutrientes de qualidade!", "positive");
-      } else if (eventRoll > 0.85) {
-        nextSatiety = Math.max(0, satiety - 10);
-        addLog("Esbarrou em um obstáculo duro ou predador. Perdeu energia vital.", "negative");
+      // Descriptive flavor text after transition
+      if (hasTransitioned && Math.random() > 0.5) {
+        addLog("O ambiente parece vibrar com vida complexa, mas nada comestível foi achado.", "neutral");
       } else {
         addLog("Explorou bastante, estudou o ambiente, mas não encontrou nutrientes.", "neutral");
       }
@@ -345,6 +374,59 @@ export default function SociedadePage() {
       hiddenExp: nextExp,
       satiety: nextSatiety,
       hasTransitioned: nextHasTransitioned,
+      socialDiscovery: nextSocialDiscovery,
+      interactionPhase: nextInteractionPhase,
+      lastPassiveDrainUpdate: new Date().toISOString()
+    });
+  };
+
+  const handleApproach = () => {
+    if (energy < 10) {
+      addLog("Energia insuficiente para tentar uma aproximação segura.", "negative");
+      return;
+    }
+
+    const success = Math.random() < 0.5;
+    triggerAnim("anim-explore");
+
+    if (success) {
+      addLog("🤝 Contato! O outro ser reagiu à sua presença sem fugir. Um vínculo inicial foi criado.", "positive");
+      updateSocietyData({
+        energy: energy - 10,
+        interactionPhase: 'linked',
+        lastPassiveDrainUpdate: new Date().toISOString()
+      });
+    } else {
+      addLog("O outro ser se assustou e desapareceu nas sombras do ecossistema. Tente novamente mais tarde.", "negative");
+      updateSocietyData({
+        energy: energy - 10,
+        interactionPhase: 'none', // Reset discovery for a while? Or just leave it as discovered? 
+        // User said: "50% de chance de falha: o outro organismo foge / nenhum vínculo é criado"
+        socialDiscovery: false 
+      });
+    }
+  };
+
+  const handleInteract = () => {
+    if (energy < 8) {
+      addLog("Linguagem e gestos consomem energia. Você está exausto.", "negative");
+      return;
+    }
+
+    triggerAnim("anim-poke");
+    const outcomes = [
+      "Vocês compartilharam um momento de observação mútua.",
+      "Houve uma troca sutil de sinais biológicos. Conhecimento compartilhado.",
+      "O outro ser parece aceitar sua presença no território.",
+      "Um breve conflito por espaço, mas nada grave. Aprendizado gerado.",
+      "Vocês parecem estar tentando entender a existência um do outro."
+    ];
+    const msg = outcomes[Math.floor(Math.random() * outcomes.length)];
+    addLog(`👥 Interação: ${msg}`, "positive");
+
+    updateSocietyData({
+      energy: energy - 8,
+      hiddenExp: hiddenExp + 2, // Interacting also grants wisdom
       lastPassiveDrainUpdate: new Date().toISOString()
     });
   };
@@ -372,26 +454,7 @@ export default function SociedadePage() {
     );
   }
 
-  // Render da Fase 2 bloqueada (Vitória Temporal)
-  if (hasTransitioned) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] animate-in slide-in-from-bottom-6 fade-in duration-1000 p-6">
-        <Card className="max-w-xl text-center bg-gradient-to-br from-indigo-900 via-indigo-950 to-slate-900 border-indigo-500/50 shadow-[0_0_100px_rgba(79,70,229,0.3)] p-12 rounded-[2.5rem] text-white">
-          <Sparkles className="w-20 h-20 text-indigo-300 mx-auto mb-8 animate-pulse drop-shadow-lg" />
-          <h1 className="text-4xl font-black mb-4 tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-indigo-200 to-white">
-            A Sociedade Desperta
-          </h1>
-          <p className="text-indigo-200/90 leading-relaxed text-lg mb-8 font-medium">
-            Seu organismo atingiu a capacidade cognitiva e comportamental necessária para transcender a mera biologia de sobrevivência. Os laços começam a se formar.
-          </p>
-          <div className="inline-block bg-black/30 backdrop-blur-md px-6 py-4 rounded-2xl border border-white/5 font-mono text-sm text-indigo-300 shadow-inner">
-            FASE 2: CONSTRUÇÃO SOCIAL <br />
-            <span className="text-xs text-indigo-400 mt-1 block">(Em desenvolvimento)</span>
-          </div>
-        </Card>
-      </div>
-    );
-  }
+  // Phase 2 screen removal code - deleted
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 max-w-5xl mx-auto pb-10">
@@ -404,10 +467,14 @@ export default function SociedadePage() {
         <div className="z-10 flex items-center justify-between">
           <div>
             <h1 className="text-4xl font-black tracking-tight flex items-center gap-3">
-              <Droplet className="w-8 h-8 text-indigo-400" />
+              <Droplet className={cn("w-8 h-8 transition-colors duration-1000", hasTransitioned ? "text-cyan-400" : "text-indigo-400")} />
               Sociedade
             </h1>
-            <p className="text-slate-300 font-medium text-lg mt-1">Evolua sua célula primordial rumo a uma civilização avançada.</p>
+            <p className="text-slate-300 font-medium text-lg mt-1">
+              {hasTransitioned 
+                ? "Um mundo maior se revela através da consciência." 
+                : "Evolua sua célula primordial rumo a uma civilização avançada."}
+            </p>
           </div>
           <div className="flex items-center gap-3">
             <div className="bg-indigo-900/40 backdrop-blur-md px-4 py-2 flex items-center gap-2 rounded-full border border-indigo-500/30 shadow-sm">
@@ -415,7 +482,9 @@ export default function SociedadePage() {
               <span className="text-sm font-black tracking-widest text-indigo-100">{getRank(hiddenExp).title}</span>
             </div>
             <div className="bg-white/10 backdrop-blur-md px-5 py-2.5 rounded-full border border-white/20">
-              <span className="text-sm font-bold tracking-widest text-indigo-200">FASE 1: SOBREVIVÊNCIA</span>
+              <span className="text-sm font-bold tracking-widest text-indigo-200 uppercase">
+                {hasTransitioned ? "Fase 2: Consciência Social" : "Fase 1: Sobrevivência"}
+              </span>
             </div>
             {/* Legend Button */}
             <button
@@ -442,30 +511,67 @@ export default function SociedadePage() {
             <CardDescription>O estado biológico atual do seu organismo.</CardDescription>
           </CardHeader>
           
-          <CardContent className="flex-1 flex flex-col items-center justify-center py-16 relative">
+          <CardContent className={cn("flex-1 flex flex-col items-center justify-center py-16 relative transition-colors duration-[2000ms]", hasTransitioned ? "bg-slate-900" : "bg-white")}>
             {/* Grid de fundo sutil */}
-            <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: "radial-gradient(#000 2px, transparent 2px)", backgroundSize: "30px 30px" }} />
+            <div className={cn("absolute inset-0 opacity-[0.03]", hasTransitioned ? "bg-[radial-gradient(#fff_1px,transparent_1px)]" : "bg-[radial-gradient(#000_1px,transparent_1px)]")} style={{ backgroundSize: "30px 30px" }} />
             
-            {/* Avatar Central (Blob) */}
-            <div className="relative group perspective-1000">
-              <div 
-                onClick={() => triggerAnim("anim-poke")}
-                className={cn(
-                  "w-48 h-48 sm:w-56 sm:h-56 rounded-full flex items-center justify-center text-6xl shadow-2xl transition-all duration-700 cursor-pointer active:scale-95",
-                  blobColor,
-                  animClass
-                )}
-                style={{
-                  boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)"
-                }}
-              >
-                <span className="drop-shadow-lg scale-110">{blobFace}</span>
-                {/* Reflexo de vidro */}
-                <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-transparent via-white/20 to-white/40 pointer-events-none" />
+            {/* Phase 2: Mysterious Lights */}
+            {hasTransitioned && (
+              <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-cyan-500/10 rounded-full blur-3xl animate-pulse" />
+                <div className="absolute bottom-1/4 right-1/4 w-40 h-40 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
               </div>
+            )}
+
+            {/* Avatar Section */}
+            <div className="relative flex items-center justify-center gap-8 w-full max-w-lg">
               
-              {/* Sombrinha */}
-              <div className="w-32 h-6 bg-slate-900/10 blur-[8px] rounded-full mt-6 mx-auto transition-transform group-hover:scale-110" />
+              {/* Main Avatar (Blob) */}
+              <div className="relative group perspective-1000 z-10">
+                <div 
+                  onClick={() => triggerAnim("anim-poke")}
+                  className={cn(
+                    "w-44 h-44 sm:w-52 sm:h-52 rounded-full flex items-center justify-center text-6xl shadow-2xl transition-all duration-700 cursor-pointer active:scale-95",
+                    blobColor,
+                    animClass
+                  )}
+                  style={{
+                    boxShadow: hasTransitioned 
+                      ? "0 20px 60px -12px rgba(34, 211, 238, 0.2)" 
+                      : "0 25px 50px -12px rgba(0, 0, 0, 0.25)"
+                  }}
+                >
+                  <span className="drop-shadow-lg scale-110">{blobFace}</span>
+                  {/* Reflexo de vidro */}
+                  <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-transparent via-white/20 to-white/40 pointer-events-none" />
+                </div>
+                
+                {/* Sombrinha */}
+                <div className={cn("w-32 h-6 blur-[8px] rounded-full mt-6 mx-auto transition-transform group-hover:scale-110", hasTransitioned ? "bg-cyan-500/10" : "bg-slate-900/10")} />
+              </div>
+
+              {/* SECOND ORGANISM (PHASE 2) */}
+              {interactionPhase === 'linked' && (
+                <div className="relative group animate-in fade-in zoom-in slide-in-from-right-12 duration-1000">
+                  <div 
+                    className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-3xl shadow-xl shadow-emerald-500/20 anim-idle cursor-default"
+                  >
+                    <span>😊</span>
+                    <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-transparent via-white/10 to-white/30 pointer-events-none" />
+                  </div>
+                  <div className="w-16 h-4 bg-emerald-500/10 blur-[6px] rounded-full mt-4 mx-auto" />
+                </div>
+              )}
+
+              {/* DISCOVERED Indicator (Placeholder point of interest) */}
+              {interactionPhase === 'discovered' && (
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 animate-pulse flex flex-col items-center gap-2">
+                   <div className="w-6 h-6 rounded-full bg-indigo-400/20 border border-indigo-400/40 flex items-center justify-center">
+                    <div className="w-2 h-2 rounded-full bg-indigo-400" />
+                   </div>
+                   <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Presença</span>
+                </div>
+              )}
             </div>
 
             {/* Status Bars Flutuantes sob o Avatar */}
@@ -526,13 +632,54 @@ export default function SociedadePage() {
                   </div>
                   <div className="text-left">
                     <p className="font-bold text-slate-800">Explorar</p>
-                    <p className="text-xs text-slate-500">Pode achar bônus</p>
+                    <p className="text-xs text-slate-500">{hasTransitioned ? "Explorar o novo mundo" : "Pode achar bônus"}</p>
                   </div>
                 </div>
                 <div className="text-xs font-black text-amber-600 bg-amber-100 px-3 py-1.5 rounded-full flex items-center gap-1 group-hover:bg-amber-200 transition-colors">
                   <Zap className="w-3 h-3" /> -3
                 </div>
               </button>
+
+              {/* PHASE 2 BUTTONS */}
+              {interactionPhase === 'discovered' && (
+                <button 
+                  onClick={handleApproach}
+                  className="w-full flex items-center justify-between p-4 rounded-2xl bg-violet-600 hover:bg-violet-500 text-white transition-all group animate-in slide-in-from-right-4 duration-500"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
+                      <Sparkles className="w-5 h-5" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-bold">Aproximar</p>
+                      <p className="text-xs opacity-70 italic font-medium">Tentar contato</p>
+                    </div>
+                  </div>
+                  <div className="text-xs font-black bg-white/20 px-3 py-1.5 rounded-full flex items-center gap-1">
+                    <Zap className="w-3 h-3" /> -10
+                  </div>
+                </button>
+              )}
+
+              {interactionPhase === 'linked' && (
+                <button 
+                  onClick={handleInteract}
+                  className="w-full flex items-center justify-between p-4 rounded-2xl bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white transition-all group animate-in slide-in-from-right-4 duration-500"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
+                      <Zap className="w-5 h-5" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-bold">Interagir</p>
+                      <p className="text-xs opacity-70 italic font-medium">Convivência social</p>
+                    </div>
+                  </div>
+                  <div className="text-xs font-black bg-white/20 px-3 py-1.5 rounded-full flex items-center gap-1">
+                    <Zap className="w-3 h-3" /> -8
+                  </div>
+                </button>
+              )}
             </CardContent>
           </Card>
 
@@ -571,7 +718,7 @@ export default function SociedadePage() {
       </div>
 
       {/* Rules Modal */}
-      {rulesOpen && <RulesModal onClose={() => setRulesOpen(false)} />}
+      {rulesOpen && <RulesModal onClose={() => setRulesOpen(false)} hasTransitioned={hasTransitioned} />}
     </div>
   );
 }

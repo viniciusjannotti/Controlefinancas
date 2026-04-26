@@ -59,6 +59,9 @@ export interface GameData {
     hiddenExp: number;
     hasTransitioned: boolean;
     lastPassiveDrainUpdate: string;
+    // Phase 2 - Social Discovery
+    socialDiscovery: boolean; 
+    interactionPhase: 'none' | 'discovered' | 'linked';
   };
 }
 
@@ -291,6 +294,8 @@ export const defaultGameData: GameData = {
     hiddenExp: 0,
     hasTransitioned: false,
     lastPassiveDrainUpdate: new Date().toISOString(),
+    socialDiscovery: false,
+    interactionPhase: 'none',
   },
 };
 
