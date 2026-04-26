@@ -208,16 +208,29 @@ export default function InvestmentsPage() {
     fetchData();
   }, [fetchData]);
 
-  const consolidated = useMemo(() => consolidateInvestments(investments, dividends), [investments, dividends]);
+  const filteredInvestments = useMemo(() => 
+    investments.filter(inv => inv.userId === activeTab), 
+    [investments, activeTab]
+  );
 
-  const totalInvested = investments.reduce((acc, curr) => acc + (Number(curr.invested) || 0), 0);
-  const currentValue = investments.reduce((acc, curr) => acc + (Number(curr.currentValue) || 0), 0);
-  const totalDivsReceived = dividends.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+  const filteredDividends = useMemo(() => 
+    dividends.filter(div => div.userId === activeTab), 
+    [dividends, activeTab]
+  );
+
+  const consolidated = useMemo(() => 
+    consolidateInvestments(filteredInvestments, filteredDividends), 
+    [filteredInvestments, filteredDividends]
+  );
+
+  const totalInvested = filteredInvestments.reduce((acc, curr) => acc + (Number(curr.invested) || 0), 0);
+  const currentValue = filteredInvestments.reduce((acc, curr) => acc + (Number(curr.currentValue) || 0), 0);
+  const totalDivsReceived = filteredDividends.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
   const totalProfitLoss = (currentValue - totalInvested) + totalDivsReceived;
   const profitPercentage = totalInvested > 0 ? (totalProfitLoss / totalInvested) * 100 : 0;
 
   const distribution = Object.entries(
-    investments.reduce((acc, curr) => {
+    filteredInvestments.reduce((acc, curr) => {
       acc[curr.type || curr.assetType] = (acc[curr.type || curr.assetType] || 0) + (Number(curr.currentValue) || 0);
       return acc;
     }, {} as Record<string, number>)
