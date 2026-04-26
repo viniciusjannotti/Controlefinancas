@@ -56,7 +56,9 @@ export async function getGameData(userId: string): Promise<GameData> {
         energy: typeof raw.society?.energy === 'number' ? raw.society.energy : defaultGameData.society.energy,
         hiddenExp: typeof raw.society?.hiddenExp === 'number' ? raw.society.hiddenExp : defaultGameData.society.hiddenExp,
         hasTransitioned: !!raw.society?.hasTransitioned,
-        lastPassiveDrainUpdate: raw.society?.lastPassiveDrainUpdate || new Date().toISOString()
+        lastPassiveDrainUpdate: raw.society?.lastPassiveDrainUpdate || new Date().toISOString(),
+        socialDiscovery: !!raw.society?.socialDiscovery,
+        interactionPhase: raw.society?.interactionPhase || 'none'
       },
     };
   }
@@ -87,7 +89,9 @@ export function subscribeToGameData(userId: string, callback: (data: GameData) =
           energy: typeof raw.society?.energy === 'number' ? raw.society.energy : defaultGameData.society.energy,
           hiddenExp: typeof raw.society?.hiddenExp === 'number' ? raw.society.hiddenExp : defaultGameData.society.hiddenExp,
           hasTransitioned: !!raw.society?.hasTransitioned,
-          lastPassiveDrainUpdate: raw.society?.lastPassiveDrainUpdate || new Date().toISOString()
+          lastPassiveDrainUpdate: raw.society?.lastPassiveDrainUpdate || new Date().toISOString(),
+          socialDiscovery: !!raw.society?.socialDiscovery,
+          interactionPhase: raw.society?.interactionPhase || 'none'
         },
       });
     }
