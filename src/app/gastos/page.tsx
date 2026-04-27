@@ -725,6 +725,7 @@ function AddExpenseForm({
             >
               <option value="Cartão">Cartão</option>
               <option value="Pix">Pix</option>
+              <option value="Boleto">Boleto</option>
               <option value="Dinheiro">Dinheiro</option>
             </select>
           </div>
