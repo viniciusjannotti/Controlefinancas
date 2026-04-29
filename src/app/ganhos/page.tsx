@@ -98,7 +98,11 @@ export default function EarningsPage() {
     return isSameMonth(d, currentMonth);
   });
 
-  const totalMonthly = filteredEarnings.reduce((acc: number, curr: any) => acc + (Number(curr.amount) || 0), 0);
+  const mariaEarnings = filteredEarnings.filter(e => e.userId === "maria");
+  const viniciusEarnings = filteredEarnings.filter(e => e.userId === "vinicius");
+
+  const totalMaria = mariaEarnings.reduce((acc: number, curr: any) => acc + (Number(curr.amount) || 0), 0);
+  const totalVinicius = viniciusEarnings.reduce((acc: number, curr: any) => acc + (Number(curr.amount) || 0), 0);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -147,7 +151,7 @@ export default function EarningsPage() {
             <div className="lg:col-span-2 space-y-6">
               <EarningsTable 
                 type="maria" 
-                data={filteredEarnings} 
+                data={mariaEarnings} 
                 loading={loading} 
                 onDelete={handleDelete}
                 onEdit={handleEdit}
@@ -162,7 +166,7 @@ export default function EarningsPage() {
                   onCancel={() => setEditingEarning(null)}
                 />
               </div>
-              <MonthlySummary value={totalMonthly} />
+              <MonthlySummary value={totalMaria} />
             </div>
           </div>
         </TabsContent>
@@ -172,7 +176,7 @@ export default function EarningsPage() {
             <div className="lg:col-span-2 space-y-6">
               <EarningsTable 
                 type="vinicius" 
-                data={filteredEarnings} 
+                data={viniciusEarnings} 
                 loading={loading} 
                 onDelete={handleDelete}
                 onEdit={handleEdit}
@@ -187,7 +191,7 @@ export default function EarningsPage() {
                   onCancel={() => setEditingEarning(null)}
                 />
               </div>
-              <MonthlySummary value={totalMonthly} />
+              <MonthlySummary value={totalVinicius} />
             </div>
           </div>
         </TabsContent>
