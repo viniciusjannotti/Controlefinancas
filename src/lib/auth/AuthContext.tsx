@@ -29,6 +29,7 @@ interface AuthContextValue {
   accountId: string | null;
   userName: string | null;
   loading: boolean;
+  accountLoading: boolean; // true enquanto resolve o accountId após login/signup
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (
     email: string,
@@ -47,22 +48,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [accountId, setAccountId] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [accountLoading, setAccountLoading] = useState(false);
+  // Flag para evitar que o onAuthStateChanged sobrescreva o estado durante o signUp
+  const signUpInProgressRef = React.useRef(false);
 
   // Resolve o accountId a partir do UID do Firebase Auth
   const resolveAccount = useCallback(async (firebaseUser: User) => {
+    // Se o signUp está em andamento, o próprio signUp vai definir o accountId
+    if (signUpInProgressRef.current) return;
+    setAccountLoading(true);
     try {
       const profile = await getUserProfile(firebaseUser.uid);
       if (profile) {
         setAccountId(profile.accountId);
         setUserName(profile.name);
       } else {
-        // Perfil ainda não existe — será criado no signUp
+        // Perfil ainda não existe (pode ser um usuário criado fora do app)
         setAccountId(null);
         setUserName(null);
       }
     } catch (err) {
       console.error("[AuthContext] Falha ao resolver conta:", err);
       setAccountId(null);
+    } finally {
+      setAccountLoading(false);
     }
   }, []);
 
@@ -95,26 +104,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       name: string,
       existingAccountId?: string
     ) => {
-      const cred = await createUserWithEmailAndPassword(auth, email, password);
-      const uid = cred.user.uid;
+      // Limpa estado anterior para evitar que dados de outra sessão apareçam
+      setAccountId(null);
+      setUserName(null);
+      setAccountLoading(true);
+      // Impede que o onAuthStateChanged sobrescreva o estado durante o cadastro
+      signUpInProgressRef.current = true;
 
-      let resolvedAccountId: string;
+      try {
+        const cred = await createUserWithEmailAndPassword(auth, email, password);
+        const uid = cred.user.uid;
 
-      if (existingAccountId) {
-        // Vincular a uma conta existente
-        const account = await getAccountById(existingAccountId);
-        if (!account) throw new Error("Código de conta não encontrado.");
-        await linkUserToAccount(uid, existingAccountId);
-        resolvedAccountId = existingAccountId;
-      } else {
-        // Criar nova conta
-        resolvedAccountId = await createAccount(name || email, uid);
+        let resolvedAccountId: string;
+
+        if (existingAccountId) {
+          // Vincular a uma conta existente
+          const account = await getAccountById(existingAccountId);
+          if (!account) throw new Error("Código de conta não encontrado.");
+          await linkUserToAccount(uid, existingAccountId);
+          resolvedAccountId = existingAccountId;
+        } else {
+          // Criar nova conta
+          resolvedAccountId = await createAccount(name || email, uid);
+        }
+
+        await createUserProfile(uid, email, name, resolvedAccountId);
+
+        setAccountId(resolvedAccountId);
+        setUserName(name);
+      } finally {
+        signUpInProgressRef.current = false;
+        setAccountLoading(false);
       }
-
-      await createUserProfile(uid, email, name, resolvedAccountId);
-
-      setAccountId(resolvedAccountId);
-      setUserName(name);
     },
     []
   );
@@ -129,7 +150,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, accountId, userName, loading, signIn, signUp, signOut }}
+      value={{ user, accountId, userName, loading, accountLoading, signIn, signUp, signOut }}
     >
       {children}
     </AuthContext.Provider>

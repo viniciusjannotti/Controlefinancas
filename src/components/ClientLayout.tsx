@@ -13,7 +13,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const { user, loading } = useAuth();
+  const { user, loading, accountLoading } = useAuth();
 
   // Close sidebar when navigating on mobile
   useEffect(() => {
@@ -35,8 +35,8 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  // Full-screen loading state while checking auth
-  if (loading) {
+  // Full-screen loading state while checking auth OR resolving accountId
+  if (loading || accountLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 via-primary/10 to-slate-900 gap-4">
         <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center shadow-xl shadow-primary/30 animate-pulse">
