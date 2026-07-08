@@ -60,7 +60,10 @@ export default function Dashboard() {
   const [allEarningsList, setAllEarningsList] = useState<any[]>([]);
 
   useEffect(() => {
-    if (!accountId) return;
+    if (!accountId) {
+      setLoading(false);
+      return;
+    }
     async function fetchData() {
       setLoading(true);
       try {

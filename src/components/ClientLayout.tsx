@@ -8,12 +8,13 @@ import { NotificationsDropdown } from "@/components/NotificationsDropdown";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { Wallet } from "lucide-react";
 import { PWAIconManager } from "@/components/PWAIconManager";
+import { OnboardingScreen } from "@/components/OnboardingScreen";
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const { user, loading, accountLoading } = useAuth();
+  const { user, loading, accountLoading, accountId } = useAuth();
 
   // Close sidebar when navigating on mobile
   useEffect(() => {
@@ -49,6 +50,11 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
 
   // If not authenticated and not on /login, return null while redirect happens
   if (!user) return null;
+
+  // Usuário autenticado mas sem conta/família vinculada → tela de onboarding
+  if (!accountId) {
+    return <OnboardingScreen />;
+  }
 
   return (
     <div className="flex min-h-screen">
