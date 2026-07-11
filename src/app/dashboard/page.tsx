@@ -38,7 +38,7 @@ import { startOfMonth, subMonths, format, isWithinInterval, parseISO, isSameMont
 import { ptBR } from "date-fns/locale";
 
 export default function Dashboard() {
-  const { accountId } = useAuth();
+  const { accountId, memberLabels } = useAuth();
   const [loading, setLoading] = useState(true);
   const [metrics, setMetrics] = useState({
     monthlyEarnings: 0,
@@ -226,7 +226,7 @@ export default function Dashboard() {
           if (parts[1]) subSet.add(parts[1]);
         }
       } else {
-        const person = e.userId === 'vinicius' ? 'Vinícius' : (e.userId === 'maria' ? 'Maria' : 'Outros');
+        const person = e.userId === 'vinicius' ? memberLabels.vinicius : (e.userId === 'maria' ? memberLabels.maria : 'Outros');
         catSet.add(person);
         if (historyCategory === 'Todas' || historyCategory === person) {
           const sub = e.name || "Não Identificado";
@@ -263,7 +263,7 @@ export default function Dashboard() {
         if (historyCategory !== 'Todas' && parent !== historyCategory) matchesCat = false;
         if (historyCategory !== 'Todas' && historySubcategory !== 'Todas' && sub !== historySubcategory) matchesSub = false;
       } else {
-        const person = e.userId === 'vinicius' ? 'Vinícius' : (e.userId === 'maria' ? 'Maria' : 'Outros');
+        const person = e.userId === 'vinicius' ? memberLabels.vinicius : (e.userId === 'maria' ? memberLabels.maria : 'Outros');
         const sub = e.name || "Não Identificado";
 
         if (historyCategory !== 'Todas' && person !== historyCategory) matchesCat = false;

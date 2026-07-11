@@ -15,6 +15,14 @@ export interface AccountDoc {
   members: string[];
   createdAt: any;
   plan: "free" | "pro";
+  // Conta original do casal (M & V), que mantém os formulários especializados
+  // (paciente/consulta, cliente/serviço). Contas novas não usam isso.
+  legacyProfile?: boolean;
+}
+
+export interface AccountMemberInfo {
+  uid: string;
+  name: string;
 }
 
 export interface UserProfileDoc {
@@ -67,4 +75,17 @@ export async function linkUserToAccount(uid: string, accountId: string): Promise
   await updateDoc(doc(db, "accounts", accountId), {
     members: arrayUnion(uid),
   });
+}
+
+// ── Buscar nomes dos membros de uma conta (na ordem em que entraram) ─────────
+export async function getAccountMembers(accountId: string): Promise<AccountMemberInfo[]> {
+  const account = await getAccountById(accountId);
+  if (!account) return [];
+  return Promise.all(
+    account.members.map(async (uid) => {
+      const snap = await getDoc(doc(db, "users", uid));
+      const name = snap.exists() ? (snap.data() as UserProfileDoc).name : "";
+      return { uid, name: name || "" };
+    })
+  );
 }

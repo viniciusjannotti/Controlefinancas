@@ -125,7 +125,7 @@ function consolidateInvestments(investments: any[], dividends: any[]) {
 // Main Page
 // ──────────────────────────────────────
 export default function InvestmentsPage() {
-  const { accountId } = useAuth();
+  const { accountId, memberLabels } = useAuth();
   const [activeTab, setActiveTab] = useState("maria");
   const [investments, setInvestments] = useState<any[]>([]);
   const [dividends, setDividends] = useState<any[]>([]);
@@ -264,7 +264,7 @@ export default function InvestmentsPage() {
       <div className="flex justify-between items-end">
         <div className="flex flex-col gap-2">
           <h2 className="text-3xl font-bold tracking-tight text-slate-900">Investimentos</h2>
-          <p className="text-slate-500 text-lg">Acompanhe a evolução do patrimônio de {activeTab === 'maria' ? 'Maria Cecília' : 'Vinícius'}.</p>
+          <p className="text-slate-500 text-lg">Acompanhe a evolução do patrimônio de {activeTab === 'maria' ? memberLabels.maria : memberLabels.vinicius}.</p>
         </div>
         <div className="flex gap-3">
           <Button variant="outline" onClick={fetchData} disabled={loading}>
@@ -287,8 +287,8 @@ export default function InvestmentsPage() {
       <Tabs>
         <div className="flex justify-between items-center mb-6">
           <TabsList>
-            <TabsTrigger value="maria" activeTab={activeTab} setActiveTab={setActiveTab}>Maria Cecília</TabsTrigger>
-            <TabsTrigger value="vinicius" activeTab={activeTab} setActiveTab={setActiveTab}>Vinícius</TabsTrigger>
+            <TabsTrigger value="maria" activeTab={activeTab} setActiveTab={setActiveTab}>{memberLabels.maria}</TabsTrigger>
+            <TabsTrigger value="vinicius" activeTab={activeTab} setActiveTab={setActiveTab}>{memberLabels.vinicius}</TabsTrigger>
           </TabsList>
           <Button 
             variant={showForm ? "ghost" : "outline"} 

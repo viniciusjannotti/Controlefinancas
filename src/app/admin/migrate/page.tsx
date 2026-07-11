@@ -65,6 +65,11 @@ export default function MigratePage() {
 
       setResolvedAccountId(accountId);
 
+      // Marca esta conta como "legada": mantém os formulários especializados
+      // (Paciente/Tipo de Consulta, Cliente/Tipo de Serviço) que contas novas não usam.
+      await updateDoc(doc(db, "accounts", accountId), { legacyProfile: true });
+      appendLog("   ✅ Conta marcada como perfil legado (mantém campos especializados).");
+
       // ── Step 2: Create/login Vinícius and link to same account ────────────
       appendLog("\n👤 Criando conta de Vinícius...");
       let viniciusUid: string;

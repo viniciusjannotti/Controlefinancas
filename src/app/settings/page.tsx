@@ -30,13 +30,13 @@ import { getSettings, updateSettings } from "@/lib/firebase/db";
 import { useAuth } from "@/lib/auth/AuthContext";
 
 export default function SettingsPage() {
-  const { user, accountId, userName, signOut } = useAuth();
+  const { user, accountId, userName, signOut, memberLabels } = useAuth();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
   const [formData, setFormData] = useState({
-    user1: "Maria Cecília",
-    user2: "Vinícius",
+    user1: memberLabels.maria,
+    user2: memberLabels.vinicius,
   });
 
   const fetchSettings = React.useCallback(async () => {
@@ -49,13 +49,16 @@ export default function SettingsPage() {
           ...prev,
           ...(data as typeof prev)
         }));
+      } else {
+        // Sem configuração salva ainda: usa os nomes já resolvidos (reais ou padrão)
+        setFormData({ user1: memberLabels.maria, user2: memberLabels.vinicius });
       }
     } catch (error) {
       console.error("Erro ao buscar configurações:", error);
     } finally {
       setLoading(false);
     }
-  }, [accountId]);
+  }, [accountId, memberLabels]);
 
   React.useEffect(() => {
     fetchSettings();
@@ -171,7 +174,7 @@ export default function SettingsPage() {
           {/* Names config */}
           <Card>
             <CardHeader>
-              <CardTitle>Informações do Casal</CardTitle>
+              <CardTitle>Nomes dos Usuários</CardTitle>
               <CardDescription>Atualize os nomes que aparecem no sistema.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

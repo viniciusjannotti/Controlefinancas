@@ -117,7 +117,7 @@ const pieData = Object.entries(
 ).map(([name, value]) => ({ name, value, color: categoryColors[name] || "#CBD5E1" }));
 
 export default function ExpensesPage() {
-  const { accountId } = useAuth();
+  const { accountId, memberLabels } = useAuth();
   const [expenses, setExpenses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingExpense, setEditingExpense] = useState<any | null>(null);
@@ -245,15 +245,16 @@ export default function ExpensesPage() {
 
       <div className="grid gap-6 md:grid-cols-3">
         <StatsCard title="Total no Mês" value={totalMonthly} color="red" />
-        <StatsCard title="Pago por Maria" value={paidByMaria} color="blue" />
-        <StatsCard title="Pago por Vinícius" value={paidByVinicius} color="blue" />
+        <StatsCard title={`Pago por ${memberLabels.maria}`} value={paidByMaria} color="blue" />
+        <StatsCard title={`Pago por ${memberLabels.vinicius}`} value={paidByVinicius} color="blue" />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
-          <ExpensesTable 
-            data={filteredExpenses} 
-            loading={loading} 
+          <ExpensesTable
+            data={filteredExpenses}
+            memberLabels={memberLabels}
+            loading={loading}
             onDelete={handleDelete}
             onEdit={handleEdit}
             searchTerm={searchTerm}
@@ -265,11 +266,12 @@ export default function ExpensesPage() {
 
         <div className="space-y-6">
           <div id="form-card">
-            <AddExpenseForm 
+            <AddExpenseForm
+              memberLabels={memberLabels}
               onSave={() => {
                 fetchExpenses();
                 setEditingExpense(null);
-              }} 
+              }}
               editingExpense={editingExpense}
               onCancel={() => setEditingExpense(null)}
             />
@@ -281,17 +283,19 @@ export default function ExpensesPage() {
   );
 }
 
-function ExpensesTable({ 
-  data, 
-  loading, 
-  onDelete, 
+function ExpensesTable({
+  data,
+  memberLabels,
+  loading,
+  onDelete,
   onEdit,
   searchTerm,
   onSearchChange,
   filters,
   onFilterChange
-}: { 
-  data: any[], 
+}: {
+  data: any[],
+  memberLabels: { maria: string; vinicius: string },
   loading: boolean,
   onDelete: (id: string) => void,
   onEdit: (expense: any) => void,
@@ -480,7 +484,9 @@ function ExpensesTable({
                     </span>
                   </TableCell>
                   <TableCell className="text-slate-500">{expense.method || "-"}</TableCell>
-                  <TableCell className="capitalize">{expense.userId}</TableCell>
+                  <TableCell>
+                    {expense.userId === "maria" ? memberLabels.maria : expense.userId === "vinicius" ? memberLabels.vinicius : expense.userId}
+                  </TableCell>
                   <TableCell className="text-right font-bold text-red-600">
                     {formatCurrency(expense.amount)}
                   </TableCell>
@@ -526,12 +532,14 @@ function ExpensesTable({
   );
 }
 
-function AddExpenseForm({ 
-  onSave, 
-  editingExpense, 
-  onCancel 
-}: { 
-  onSave: () => void, 
+function AddExpenseForm({
+  memberLabels,
+  onSave,
+  editingExpense,
+  onCancel
+}: {
+  memberLabels: { maria: string; vinicius: string },
+  onSave: () => void,
   editingExpense?: any | null,
   onCancel?: () => void
 }) {
@@ -699,8 +707,8 @@ function AddExpenseForm({
             value={formData.userId}
             onChange={(e) => setFormData({ ...formData, userId: e.target.value })}
           >
-            <option value="maria">Maria Cecília</option>
-            <option value="vinicius">Vinícius</option>
+            <option value="maria">{memberLabels.maria}</option>
+            <option value="vinicius">{memberLabels.vinicius}</option>
           </select>
         </div>
 

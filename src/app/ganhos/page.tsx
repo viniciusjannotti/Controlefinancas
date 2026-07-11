@@ -48,7 +48,7 @@ import { useGame } from "@/lib/game/GameContext";
 import { useAuth } from "@/lib/auth/AuthContext";
 
 export default function EarningsPage() {
-  const { accountId } = useAuth();
+  const { accountId, memberLabels, isLegacyProfile } = useAuth();
   const [activeTab, setActiveTab] = useState("maria");
   const [earnings, setEarnings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -139,28 +139,31 @@ export default function EarningsPage() {
       <Tabs>
         <TabsList className="bg-slate-200/50">
           <TabsTrigger value="maria" activeTab={activeTab} setActiveTab={(tab) => { setActiveTab(tab); setEditingEarning(null); }}>
-            Maria Cecília
+            {memberLabels.maria}
           </TabsTrigger>
           <TabsTrigger value="vinicius" activeTab={activeTab} setActiveTab={(tab) => { setActiveTab(tab); setEditingEarning(null); }}>
-            Vinícius
+            {memberLabels.vinicius}
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="maria" activeTab={activeTab}>
           <div className="grid gap-6 lg:grid-cols-3">
             <div className="lg:col-span-2 space-y-6">
-              <EarningsTable 
-                type="maria" 
-                data={mariaEarnings} 
-                loading={loading} 
+              <EarningsTable
+                type="maria"
+                legacy={isLegacyProfile}
+                data={mariaEarnings}
+                loading={loading}
                 onDelete={handleDelete}
                 onEdit={handleEdit}
               />
             </div>
             <div className="space-y-6">
               <div id="earnings-form-card">
-                <AddEarningsForm 
-                  type="maria" 
+                <AddEarningsForm
+                  type="maria"
+                  legacy={isLegacyProfile}
+                  memberLabel={memberLabels.maria}
                   onSave={() => { fetchEarnings(); setEditingEarning(null); }}
                   editingEarning={editingEarning}
                   onCancel={() => setEditingEarning(null)}
@@ -174,18 +177,21 @@ export default function EarningsPage() {
         <TabsContent value="vinicius" activeTab={activeTab}>
           <div className="grid gap-6 lg:grid-cols-3">
             <div className="lg:col-span-2 space-y-6">
-              <EarningsTable 
-                type="vinicius" 
-                data={viniciusEarnings} 
-                loading={loading} 
+              <EarningsTable
+                type="vinicius"
+                legacy={isLegacyProfile}
+                data={viniciusEarnings}
+                loading={loading}
                 onDelete={handleDelete}
                 onEdit={handleEdit}
               />
             </div>
             <div className="space-y-6">
               <div id="earnings-form-card">
-                <AddEarningsForm 
-                  type="vinicius" 
+                <AddEarningsForm
+                  type="vinicius"
+                  legacy={isLegacyProfile}
+                  memberLabel={memberLabels.vinicius}
                   onSave={() => { fetchEarnings(); setEditingEarning(null); }}
                   editingEarning={editingEarning}
                   onCancel={() => setEditingEarning(null)}
@@ -200,11 +206,12 @@ export default function EarningsPage() {
   );
 }
 
-function EarningsTable({ 
-  type, data, loading, onDelete, onEdit 
-}: { 
-  type: "maria" | "vinicius", 
-  data: any[], 
+function EarningsTable({
+  type, legacy, data, loading, onDelete, onEdit
+}: {
+  type: "maria" | "vinicius",
+  legacy: boolean,
+  data: any[],
   loading: boolean,
   onDelete: (id: string) => void,
   onEdit: (item: any) => void
@@ -232,7 +239,7 @@ function EarningsTable({
           <TableHeader>
             <TableRow>
               <TableHead>Data</TableHead>
-              <TableHead>{type === "maria" ? "Paciente" : "Cliente"}</TableHead>
+              <TableHead>{legacy ? (type === "maria" ? "Paciente" : "Cliente") : "Nome"}</TableHead>
               <TableHead>Tipo</TableHead>
               <TableHead>Método</TableHead>
               <TableHead className="text-right">Valor</TableHead>
@@ -305,13 +312,17 @@ function EarningsTable({
   );
 }
 
-function AddEarningsForm({ 
-  type, 
-  onSave, 
-  editingEarning, 
-  onCancel 
-}: { 
+function AddEarningsForm({
+  type,
+  legacy,
+  memberLabel,
+  onSave,
+  editingEarning,
+  onCancel
+}: {
   type: "maria" | "vinicius",
+  legacy: boolean,
+  memberLabel: string,
   onSave: () => void,
   editingEarning?: any | null,
   onCancel?: () => void
@@ -324,14 +335,14 @@ function AddEarningsForm({
   const { accountId } = useAuth();
 
   const fetchClients = React.useCallback(async () => {
-    if (!accountId) return;
+    if (!accountId || !legacy) return;
     try {
       const data = type === "vinicius" ? await getViniciusClients(accountId) : await getCeciliaClients(accountId);
       setClients(data);
     } catch (error) {
       console.error("Erro ao buscar clientes:", error);
     }
-  }, [type, accountId]);
+  }, [type, accountId, legacy]);
 
   React.useEffect(() => {
     fetchClients();
@@ -429,7 +440,7 @@ function AddEarningsForm({
       <CardHeader>
         <CardTitle>{editingEarning ? "Editar Ganho" : "Adicionar Novo"}</CardTitle>
         <CardDescription>
-          {editingEarning ? "Atualize os detalhes do recebimento." : "Insira os detalhes do novo recebimento."}
+          {editingEarning ? "Atualize os detalhes do recebimento." : `Insira os detalhes do novo recebimento de ${memberLabel}.`}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -447,78 +458,107 @@ function AddEarningsForm({
           </div>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="name">{type === "maria" ? "Nome do Paciente" : "Nome do Cliente"}</Label>
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <User className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-              <select 
-                id="name" 
-                className={selectClass + " pl-10 appearance-none"}
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              >
-                <option value="">{type === "maria" ? "Selecione um paciente" : "Selecione um cliente"}</option>
-                {clients.map(c => <option key={c.id || c.name} value={c.name}>{c.name}</option>)}
-              </select>
+        {legacy ? (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="name">{type === "maria" ? "Nome do Paciente" : "Nome do Cliente"}</Label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <User className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                  <select
+                    id="name"
+                    className={selectClass + " pl-10 appearance-none"}
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  >
+                    <option value="">{type === "maria" ? "Selecione um paciente" : "Selecione um cliente"}</option>
+                    {clients.map(c => <option key={c.id || c.name} value={c.name}>{c.name}</option>)}
+                  </select>
+                </div>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setShowAddClient(!showAddClient)}
+                  className="shrink-0"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
-            <Button 
-              variant="outline" 
-              size="icon" 
-              onClick={() => setShowAddClient(!showAddClient)}
-              className="shrink-0"
-            >
-              <Plus className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
 
-        {showAddClient && (
-          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
-            <Label className="text-xs">{type === "maria" ? "Novo Paciente" : "Novo Cliente"}</Label>
-            <div className="flex gap-2">
-              <Input 
-                value={newClient} 
-                onChange={(e) => setNewClient(e.target.value)}
-                placeholder="Nome..." 
-                className="h-9 text-xs" 
-              />
-              <Button size="sm" onClick={addClient}>Add</Button>
-            </div>
-          </div>
-        )}
+            {showAddClient && (
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                <Label className="text-xs">{type === "maria" ? "Novo Paciente" : "Novo Cliente"}</Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={newClient}
+                    onChange={(e) => setNewClient(e.target.value)}
+                    placeholder="Nome..."
+                    className="h-9 text-xs"
+                  />
+                  <Button size="sm" onClick={addClient}>Add</Button>
+                </div>
+              </div>
+            )}
 
-        {type === "maria" ? (
-          <div className="space-y-2">
-            <Label htmlFor="type">Tipo de Consulta</Label>
-            <Input 
-              id="type" 
-              placeholder="Ex: Psicoterapia" 
-              value={formData.type}
-              onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-            />
-          </div>
+            {type === "maria" ? (
+              <div className="space-y-2">
+                <Label htmlFor="type">Tipo de Consulta</Label>
+                <Input
+                  id="type"
+                  placeholder="Ex: Psicoterapia"
+                  value={formData.type}
+                  onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                />
+              </div>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="service">Tipo de Serviço</Label>
+                  <select
+                    id="service"
+                    className={selectClass}
+                    value={formData.service}
+                    onChange={(e) => setFormData({ ...formData, service: e.target.value })}
+                  >
+                    <option value="online">Online</option>
+                    <option value="presencial">Presencial</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="notes">Observação <span className="text-slate-400 font-normal">(Opcional)</span></Label>
+                  <Input
+                    id="notes"
+                    placeholder="Detalhes adicionais..."
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  />
+                </div>
+              </>
+            )}
+          </>
         ) : (
           <>
             <div className="space-y-2">
-              <Label htmlFor="service">Tipo de Serviço</Label>
-              <select 
-                id="service" 
-                className={selectClass}
-                value={formData.service}
-                onChange={(e) => setFormData({ ...formData, service: e.target.value })}
-              >
-                <option value="online">Online</option>
-                <option value="presencial">Presencial</option>
-              </select>
+              <Label htmlFor="name">Nome</Label>
+              <div className="relative">
+                <User className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                <Input
+                  id="name"
+                  className="pl-10"
+                  placeholder="De quem é esse recebimento..."
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                />
+              </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="notes">Observação <span className="text-slate-400 font-normal">(Opcional)</span></Label>
-              <Input 
-                id="notes" 
-                placeholder="Detalhes adicionais..." 
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              <Label htmlFor="type">Categoria</Label>
+              <Input
+                id="type"
+                placeholder="Ex: Salário, Freelance, Venda..."
+                value={formData.type}
+                onChange={(e) => setFormData({ ...formData, type: e.target.value })}
               />
             </div>
           </>
