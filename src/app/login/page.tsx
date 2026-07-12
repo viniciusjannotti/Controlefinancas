@@ -82,20 +82,20 @@ export default function LoginPage() {
             <Wallet className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-3xl font-bold text-white tracking-tight">M &amp; V Finanças</h1>
-          <p className="text-slate-400 mt-1 text-sm">Gestão financeira do casal</p>
+          <p className="text-slate-400 dark:text-slate-500 mt-1 text-sm">Gestão financeira do casal</p>
         </div>
 
         {/* Card */}
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl">
+        <div className="bg-white dark:bg-slate-900/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl">
           {/* Tabs */}
-          <div className="flex bg-white/5 rounded-xl p-1 gap-1 mb-8">
+          <div className="flex bg-white dark:bg-slate-900/5 rounded-xl p-1 gap-1 mb-8">
             <button
               type="button"
               onClick={() => { setMode("login"); setError(""); }}
               className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
                 mode === "login"
                   ? "bg-primary text-white shadow-md shadow-primary/30"
-                  : "text-slate-400 hover:text-white"
+                  : "text-slate-400 dark:text-slate-500 hover:text-white"
               }`}
             >
               <LogIn className="w-4 h-4 inline mr-2" />
@@ -107,7 +107,7 @@ export default function LoginPage() {
               className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
                 mode === "register"
                   ? "bg-primary text-white shadow-md shadow-primary/30"
-                  : "text-slate-400 hover:text-white"
+                  : "text-slate-400 dark:text-slate-500 hover:text-white"
               }`}
             >
               <UserPlus className="w-4 h-4 inline mr-2" />
@@ -128,7 +128,7 @@ export default function LoginPage() {
                   placeholder="Ex: Maria Cecília"
                   value={form.name}
                   onChange={(e) => update("name", e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 text-white placeholder-slate-500 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
+                  className="w-full bg-white dark:bg-slate-900/5 border border-white/10 text-white placeholder-slate-500 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
                 />
               </div>
             )}
@@ -144,7 +144,7 @@ export default function LoginPage() {
                 placeholder="seu@email.com"
                 value={form.email}
                 onChange={(e) => update("email", e.target.value)}
-                className="w-full bg-white/5 border border-white/10 text-white placeholder-slate-500 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
+                className="w-full bg-white dark:bg-slate-900/5 border border-white/10 text-white placeholder-slate-500 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
               />
             </div>
 
@@ -160,12 +160,12 @@ export default function LoginPage() {
                   placeholder="••••••••"
                   value={form.password}
                   onChange={(e) => update("password", e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 text-white placeholder-slate-500 rounded-xl px-4 py-3 pr-11 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
+                  className="w-full bg-white dark:bg-slate-900/5 border border-white/10 text-white placeholder-slate-500 rounded-xl px-4 py-3 pr-11 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3 top-3.5 text-slate-400 hover:text-white transition-colors"
+                  className="absolute right-3 top-3.5 text-slate-400 dark:text-slate-500 hover:text-white transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -201,9 +201,9 @@ export default function LoginPage() {
                       placeholder="Cole o código da conta aqui"
                       value={form.accountId}
                       onChange={(e) => update("accountId", e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 text-white placeholder-slate-500 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all font-mono"
+                      className="w-full bg-white dark:bg-slate-900/5 border border-white/10 text-white placeholder-slate-500 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all font-mono"
                     />
-                    <p className="text-xs text-slate-500 mt-1">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                       O código está disponível em Configurações → Conta
                     </p>
                   </div>
@@ -247,7 +247,7 @@ export default function LoginPage() {
           </form>
         </div>
 
-        <p className="text-center text-slate-600 text-xs mt-6">
+        <p className="text-center text-slate-600 dark:text-slate-300 text-xs mt-6">
           Seus dados são privados e protegidos com criptografia.
         </p>
       </div>

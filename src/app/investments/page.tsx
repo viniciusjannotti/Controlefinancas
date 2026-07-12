@@ -263,8 +263,8 @@ export default function InvestmentsPage() {
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex justify-between items-end">
         <div className="flex flex-col gap-2">
-          <h2 className="text-3xl font-bold tracking-tight text-slate-900">Investimentos</h2>
-          <p className="text-slate-500 text-lg">Acompanhe a evolução do patrimônio de {activeTab === 'maria' ? memberLabels.maria : memberLabels.vinicius}.</p>
+          <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Investimentos</h2>
+          <p className="text-slate-500 dark:text-slate-400 text-lg">Acompanhe a evolução do patrimônio de {activeTab === 'maria' ? memberLabels.maria : memberLabels.vinicius}.</p>
         </div>
         <div className="flex gap-3">
           <Button variant="outline" onClick={fetchData} disabled={loading}>
@@ -394,9 +394,9 @@ export default function InvestmentsPage() {
       {showDivForm && selectedAssetForDiv && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setShowDivForm(false)} />
-          <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl p-6 overflow-hidden animate-in zoom-in duration-200">
+          <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl p-6 overflow-hidden animate-in zoom-in duration-200">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold text-slate-900">Novo Provento — {selectedAssetForDiv.name}</h3>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">Novo Provento — {selectedAssetForDiv.name}</h3>
               <Button variant="ghost" className="h-8 w-8 p-0" onClick={() => setShowDivForm(false)}>
                 <X className="w-4 h-4" />
               </Button>
@@ -426,7 +426,7 @@ function ConsolidatedTable({ consolidated, loading, onRowClick, onNewContributio
   if (loading) {
     return (
       <Card>
-        <CardContent className="p-8 text-center text-slate-500">
+        <CardContent className="p-8 text-center text-slate-500 dark:text-slate-400">
           <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2" />
           Carregando...
         </CardContent>
@@ -458,18 +458,18 @@ function ConsolidatedTable({ consolidated, loading, onRowClick, onNewContributio
               <TableRow key={assetGroup.key} className="cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => onRowClick(assetGroup)}>
                 <TableCell>
                   <div className="flex flex-col">
-                    <span className="font-semibold text-slate-900">{assetGroup.name}</span>
-                    <span className="text-xs text-slate-400">{assetGroup.ticker || "N/A"}</span>
+                    <span className="font-semibold text-slate-900 dark:text-slate-100">{assetGroup.name}</span>
+                    <span className="text-xs text-slate-400 dark:text-slate-500">{assetGroup.ticker || "N/A"}</span>
                   </div>
                 </TableCell>
-                <TableCell><span className="text-sm text-slate-600">{assetGroup.assetType}</span></TableCell>
+                <TableCell><span className="text-sm text-slate-600 dark:text-slate-300">{assetGroup.assetType}</span></TableCell>
                 <TableCell className="text-right">
                   <div className="flex flex-col items-end">
                     <span className="font-medium">{assetGroup.totalQuantity.toLocaleString('pt-BR')}</span>
-                    <span className="text-[10px] text-slate-400">PM {formatCurrency(assetGroup.avgPurchasePrice)}</span>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500">PM {formatCurrency(assetGroup.avgPurchasePrice)}</span>
                   </div>
                 </TableCell>
-                <TableCell className="text-right text-slate-700">{formatCurrency(assetGroup.totalInvested)}</TableCell>
+                <TableCell className="text-right text-slate-700 dark:text-slate-300">{formatCurrency(assetGroup.totalInvested)}</TableCell>
                 <TableCell className="text-right font-bold">
                   <div className="flex flex-col items-end">
                     <span>{formatCurrency(assetGroup.totalCurrentValue)}</span>
@@ -498,22 +498,22 @@ function ConsolidatedTable({ consolidated, loading, onRowClick, onNewContributio
                         onClick={() => setOpenMenuKey(null)}
                       />
                       {/* Dropdown */}
-                      <div className="absolute right-0 top-9 z-20 w-48 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                      <div className="absolute right-0 top-9 z-20 w-48 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
                         <button
-                          className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 font-medium transition-colors"
+                          className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 flex items-center gap-2 font-medium transition-colors"
                           onClick={() => { onRowClick(assetGroup); setOpenMenuKey(null); }}
                         >
-                          <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                          <ChevronRight className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                           Ver Detalhes
                         </button>
                         <button
-                          className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 font-medium transition-colors"
+                          className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 flex items-center gap-2 font-medium transition-colors"
                           onClick={() => { onNewContribution(assetGroup); setOpenMenuKey(null); }}
                         >
-                          <Plus className="w-3.5 h-3.5 text-slate-400" />
+                          <Plus className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                           Novo Aporte
                         </button>
-                        <div className="border-t border-slate-100 my-1" />
+                        <div className="border-t border-slate-100 dark:border-slate-800 my-1" />
                         <button
                           className="w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 flex items-center gap-2 font-medium transition-colors"
                           onClick={() => { onDeleteGroup(assetGroup); setOpenMenuKey(null); }}
@@ -544,9 +544,9 @@ function AssetDetailPanel({ assetGroup, onClose, onNewContribution, onEditEntry,
   return (
     <div className="fixed inset-0 z-50 flex justify-end" onClick={onClose}>
       <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
-      <div className="relative w-full max-w-lg h-full bg-white shadow-2xl overflow-y-auto animate-in slide-in-from-right duration-300" onClick={(e) => e.stopPropagation()}>
-        <div className="sticky top-0 bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between z-10">
-          <div><h3 className="text-xl font-bold text-slate-900">{assetGroup.name}</h3><p className="text-sm text-slate-400">{assetGroup.ticker || "N/A"}</p></div>
+      <div className="relative w-full max-w-lg h-full bg-white dark:bg-slate-900 shadow-2xl overflow-y-auto animate-in slide-in-from-right duration-300" onClick={(e) => e.stopPropagation()}>
+        <div className="sticky top-0 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 px-6 py-4 flex items-center justify-between z-10">
+          <div><h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">{assetGroup.name}</h3><p className="text-sm text-slate-400 dark:text-slate-500">{assetGroup.ticker || "N/A"}</p></div>
           <Button variant="ghost" className="h-8 w-8 p-0" onClick={onClose}><X className="w-4 h-4" /></Button>
         </div>
 
@@ -566,7 +566,7 @@ function AssetDetailPanel({ assetGroup, onClose, onNewContribution, onEditEntry,
 
           <section>
             <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2 text-slate-700 font-semibold"><History className="w-4 h-4" /> Histórico de Aportes</div>
+              <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300 font-semibold"><History className="w-4 h-4" /> Histórico de Aportes</div>
               <Button size="sm" variant="outline" className="h-7 text-xs" onClick={onNewContribution}><Plus className="w-3 h-3 mr-1" /> Aporte</Button>
             </div>
             <div className="space-y-2">
@@ -574,13 +574,13 @@ function AssetDetailPanel({ assetGroup, onClose, onNewContribution, onEditEntry,
                 .slice()
                 .sort((a: any, b: any) => (b.date || "").localeCompare(a.date || ""))
                 .map((entry: any) => (
-                <div key={entry.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl group/item">
+                <div key={entry.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl group/item">
                   <div>
-                    <p className="text-xs font-semibold text-slate-800">{formatDate(entry.date)}</p>
-                    <p className="text-[10px] text-slate-400">{entry.quantity} un. @ {formatCurrency(entry.purchasePrice)}</p>
+                    <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">{formatDate(entry.date)}</p>
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500">{entry.quantity} un. @ {formatCurrency(entry.purchasePrice)}</p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="text-sm font-bold text-slate-700">{formatCurrency(entry.invested)}</span>
+                    <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{formatCurrency(entry.invested)}</span>
                     <div className="hidden group-hover/item:flex items-center gap-1">
                       <Button variant="ghost" className="h-7 w-7 p-0" onClick={() => onEditEntry(entry)}><Edit3 className="w-3 h-3" /></Button>
                       <Button variant="ghost" className="h-7 w-7 p-0 text-red-500 hover:bg-red-50" onClick={() => onDeleteEntry(entry.id)}><Trash2 className="w-3 h-3" /></Button>
@@ -593,7 +593,7 @@ function AssetDetailPanel({ assetGroup, onClose, onNewContribution, onEditEntry,
 
           <section>
             <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2 text-slate-700 font-semibold"><Gift className="w-4 h-4" /> Proventos Recebidos</div>
+              <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300 font-semibold"><Gift className="w-4 h-4" /> Proventos Recebidos</div>
               <Button size="sm" variant="outline" className="h-7 text-xs border-emerald-200 text-emerald-600 hover:bg-emerald-50" onClick={onAddDividend}>
                 <Plus className="w-3 h-3 mr-1" /> Provento
               </Button>
@@ -619,7 +619,7 @@ function AssetDetailPanel({ assetGroup, onClose, onNewContribution, onEditEntry,
                 ))}
               </div>
             ) : (
-              <div className="text-center py-6 border-2 border-dashed border-slate-100 rounded-xl text-slate-300 text-xs">
+              <div className="text-center py-6 border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-xl text-slate-300 text-xs">
                 Nenhum provento registrado.
               </div>
             )}
@@ -630,10 +630,10 @@ function AssetDetailPanel({ assetGroup, onClose, onNewContribution, onEditEntry,
   );
 }
 
-function DetailStat({ label, value, subtitle, color = "text-slate-900", bg = "bg-slate-50" }: any) {
+function DetailStat({ label, value, subtitle, color = "text-slate-900 dark:text-slate-100", bg = "bg-slate-50 dark:bg-slate-800/50" }: any) {
   return (
     <div className={cn("p-4 rounded-xl", bg)}>
-      <p className="text-[10px] text-slate-500 mb-1 uppercase tracking-wider font-semibold">{label}</p>
+      <p className="text-[10px] text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider font-semibold">{label}</p>
       <p className={cn("text-lg font-bold leading-none", color)}>{value}</p>
       {subtitle && <p className={cn("text-[10px] mt-1 font-bold", color)}>{subtitle}</p>}
     </div>
@@ -679,13 +679,13 @@ function AddDividendForm({ asset, userId, onSave, onCancel }: any) {
       <div className="space-y-2">
         <Label>Valor Total Recebido</Label>
         <div className="relative">
-          <DollarSign className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
+          <DollarSign className="absolute left-3 top-3 w-4 h-4 text-slate-400 dark:text-slate-500" />
           <Input className="pl-9" type="number" placeholder="0,00" value={formData.amount} onChange={(e) => setFormData({ ...formData, amount: e.target.value })} />
         </div>
       </div>
       <div className="space-y-2">
         <Label>Tipo</Label>
-        <select className="flex h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none"
+        <select className="flex h-11 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm focus:outline-none"
           value={formData.type} onChange={(e) => setFormData({ ...formData, type: e.target.value })}>
           {dividendTypes.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
@@ -751,7 +751,7 @@ function AddInvestmentForm({ type, onSave, onCancel, editingInvestment, isContri
           <div className="space-y-2">
             <Label>Tipo de Ativo</Label>
             <select 
-              className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all"
+              className="flex h-10 w-full rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all"
               value={formData.assetType}
               onChange={(e) => setFormData({...formData, assetType: e.target.value})}
             >
@@ -784,8 +784,8 @@ function StatsCard({ title, value, icon: Icon, subtitle }: any) {
         <div className="flex items-center gap-4">
           <div className="p-3 bg-blue-50 rounded-xl text-primary"><Icon className="w-6 h-6" /></div>
           <div>
-            <p className="text-sm font-medium text-slate-500">{title}</p>
-            <h3 className="text-2xl font-bold text-slate-900">{formatCurrency(value)}</h3>
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{title}</p>
+            <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{formatCurrency(value)}</h3>
             {subtitle && <p className="text-[10px] text-emerald-600 font-bold">{subtitle}</p>}
           </div>
         </div>
@@ -804,7 +804,7 @@ function ProfitCard({ value, percentage }: { value: number, percentage: number }
             <TrendingUp className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-sm font-medium text-slate-500">Lucro/Prejuízo Total (Inc. Prov.)</p>
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Lucro/Prejuízo Total (Inc. Prov.)</p>
             <div className="flex items-baseline gap-2">
               <h3 className={cn("text-2xl font-bold", isPositive ? "text-emerald-600" : "text-red-600")}>{formatCurrency(value)}</h3>
               <span className={cn("text-sm font-bold", isPositive ? "text-emerald-500" : "text-red-500")}>{isPositive ? "+" : ""}{percentage.toFixed(2)}%</span>
@@ -848,8 +848,8 @@ function SmartAllocationCard({ distribution }: any) {
       <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl"></div>
       <CardHeader><CardTitle className="text-white text-lg">Dica de Gestão</CardTitle></CardHeader>
       <CardContent>
-        <p className="text-slate-400 text-xs leading-relaxed">Sua maior alocação está em <span className="text-white font-bold">{distribution[0]?.name || "N/A"}</span>. Considere rebalancear sua carteira para reduzir riscos.</p>
-        <Button className="w-full mt-4 bg-white text-slate-900 border-none h-9 text-xs">Gerar Relatório</Button>
+        <p className="text-slate-400 dark:text-slate-500 text-xs leading-relaxed">Sua maior alocação está em <span className="text-white font-bold">{distribution[0]?.name || "N/A"}</span>. Considere rebalancear sua carteira para reduzir riscos.</p>
+        <Button className="w-full mt-4 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border-none h-9 text-xs">Gerar Relatório</Button>
       </CardContent>
     </Card>
   );

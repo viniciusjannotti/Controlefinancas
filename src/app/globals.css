@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
@@ -68,6 +70,8 @@
 }
 
 .dark {
+  color-scheme: dark;
+
   --background: 222 47% 11%;
   --foreground: 210 40% 98%;
   

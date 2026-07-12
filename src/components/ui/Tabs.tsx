@@ -18,7 +18,7 @@ const TabsList = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "inline-flex h-12 items-center justify-center rounded-xl bg-slate-100 p-1 text-slate-500",
+      "inline-flex h-12 items-center justify-center rounded-xl bg-slate-100 p-1 text-slate-500 dark:bg-slate-800 dark:text-slate-400",
       className
     )}
     {...props}
@@ -44,8 +44,8 @@ const TabsTrigger = React.forwardRef<HTMLButtonElement, TabsTriggerProps>(
         className={cn(
           "inline-flex items-center justify-center whitespace-nowrap rounded-lg px-6 py-2 text-sm font-medium transition-all focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50",
           isActive
-            ? "bg-white text-primary shadow-sm ring-1 ring-slate-200"
-            : "hover:bg-slate-50 hover:text-slate-700",
+            ? "bg-white text-primary shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700"
+            : "hover:bg-slate-50 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-300",
           className
         )}
         onClick={() => setActiveTab?.(value)}

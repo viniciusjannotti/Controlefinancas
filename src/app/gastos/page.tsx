@@ -221,11 +221,11 @@ export default function ExpensesPage() {
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex justify-between items-end">
         <div className="flex flex-col gap-2">
-          <h2 className="text-3xl font-bold tracking-tight text-slate-900">Gastos</h2>
-          <p className="text-slate-500 text-lg">Controle os gastos compartilhados da casa.</p>
+          <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Gastos</h2>
+          <p className="text-slate-500 dark:text-slate-400 text-lg">Controle os gastos compartilhados da casa.</p>
         </div>
         <div className="flex items-center gap-4 flex-wrap justify-end">
-          <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
+          <div className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-1 shadow-sm">
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
               <ChevronLeft className="w-4 h-4" />
             </Button>
@@ -317,7 +317,7 @@ function ExpensesTable({
   if (loading) {
     return (
       <Card>
-        <CardContent className="p-8 text-center text-slate-500">
+        <CardContent className="p-8 text-center text-slate-500 dark:text-slate-400">
           Carregando dados...
         </CardContent>
       </Card>
@@ -346,7 +346,7 @@ function ExpensesTable({
             </Button>
 
             {showFilters && (
-              <div className="absolute right-0 top-full mt-2 z-50 w-72 bg-white rounded-xl shadow-xl border border-slate-200 p-4 animate-in fade-in zoom-in duration-200">
+              <div className="absolute right-0 top-full mt-2 z-50 w-72 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 p-4 animate-in fade-in zoom-in duration-200">
                 <div className="flex justify-between items-center mb-4">
                   <h4 className="font-semibold text-sm">Filtros Avançados</h4>
                   <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setShowFilters(false)}>
@@ -358,7 +358,7 @@ function ExpensesTable({
                   <div className="space-y-1.5">
                     <Label className="text-xs">Categoria</Label>
                     <select 
-                      className="w-full h-9 rounded-lg border border-slate-200 text-xs px-2"
+                      className="w-full h-9 rounded-lg border border-slate-200 dark:border-slate-700 text-xs px-2"
                       value={filters.category}
                       onChange={(e) => onFilterChange({ ...filters, category: e.target.value, subcategory: "" })}
                     >
@@ -373,7 +373,7 @@ function ExpensesTable({
                     <div className="space-y-1.5 animate-in slide-in-from-top-1 duration-200">
                       <Label className="text-xs">Subcategoria</Label>
                       <select 
-                        className="w-full h-9 rounded-lg border border-slate-200 text-xs px-2"
+                        className="w-full h-9 rounded-lg border border-slate-200 dark:border-slate-700 text-xs px-2"
                         value={filters.subcategory}
                         onChange={(e) => onFilterChange({ ...filters, subcategory: e.target.value })}
                       >
@@ -426,7 +426,7 @@ function ExpensesTable({
             )}
           </div>
           <div className="relative">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400 dark:text-slate-500" />
             <Input 
               placeholder="Buscar..." 
               className="h-9 w-[200px] pl-9" 
@@ -435,7 +435,7 @@ function ExpensesTable({
             />
             {searchTerm && (
               <button 
-                className="absolute right-2 top-2.5 text-slate-400 hover:text-slate-600"
+                className="absolute right-2 top-2.5 text-slate-400 dark:text-slate-500 hover:text-slate-600"
                 onClick={() => onSearchChange("")}
               >
                 <X className="w-4 h-4" />
@@ -460,7 +460,7 @@ function ExpensesTable({
           <TableBody>
             {data.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-slate-400">
+                <TableCell colSpan={7} className="text-center py-8 text-slate-400 dark:text-slate-500">
                   Nenhum gasto encontrado.
                 </TableCell>
               </TableRow>
@@ -483,7 +483,7 @@ function ExpensesTable({
                       {expense.category}
                     </span>
                   </TableCell>
-                  <TableCell className="text-slate-500">{expense.method || "-"}</TableCell>
+                  <TableCell className="text-slate-500 dark:text-slate-400">{expense.method || "-"}</TableCell>
                   <TableCell>
                     {expense.userId === "maria" ? memberLabels.maria : expense.userId === "vinicius" ? memberLabels.vinicius : expense.userId}
                   </TableCell>
@@ -500,9 +500,9 @@ function ExpensesTable({
                     </Button>
                     
                     {openMenuId === expense.id && (
-                      <div className="absolute right-full top-0 mr-2 z-50 w-32 bg-white rounded-lg shadow-lg border border-slate-200 py-1 overflow-hidden animate-in fade-in zoom-in duration-200">
+                      <div className="absolute right-full top-0 mr-2 z-50 w-32 bg-white dark:bg-slate-900 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1 overflow-hidden animate-in fade-in zoom-in duration-200">
                         <button 
-                          className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                          className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 flex items-center gap-2"
                           onClick={() => {
                             onEdit(expense);
                             setOpenMenuId(null);
@@ -670,7 +670,7 @@ function AddExpenseForm({
         <div className="space-y-2">
           <Label htmlFor="date">Data</Label>
           <div className="relative">
-            <CalendarIcon className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+            <CalendarIcon className="absolute left-3 top-3 h-4 w-4 text-slate-400 dark:text-slate-500" />
             <Input 
               id="date" 
               type="date" 
@@ -682,7 +682,7 @@ function AddExpenseForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="desc">Descrição <span className="text-slate-400 font-normal">(Opcional)</span></Label>
+          <Label htmlFor="desc">Descrição <span className="text-slate-400 dark:text-slate-500 font-normal">(Opcional)</span></Label>
           <Input 
             id="desc" 
             placeholder="Ex: Supermercado Mensal" 
@@ -703,7 +703,7 @@ function AddExpenseForm({
           <Label htmlFor="paidBy">Pago por</Label>
           <select 
             id="paidBy" 
-            className="flex h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all"
+            className="flex h-11 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all"
             value={formData.userId}
             onChange={(e) => setFormData({ ...formData, userId: e.target.value })}
           >
@@ -727,7 +727,7 @@ function AddExpenseForm({
             <Label htmlFor="method">Pagamento</Label>
             <select 
               id="method" 
-              className="flex h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all"
+              className="flex h-11 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all"
               value={formData.method}
               onChange={(e) => setFormData({ ...formData, method: e.target.value })}
             >
@@ -744,7 +744,7 @@ function AddExpenseForm({
             <Label htmlFor="installments">Parcelamento (Sem Juros)</Label>
             <select
               id="installments"
-              className="flex h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all"
+              className="flex h-11 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all"
               value={installments}
               onChange={(e) => setInstallments(Number(e.target.value))}
             >
@@ -818,7 +818,7 @@ function DistributionCard({ pieData }: { pieData: any[] }) {
             <div key={item.name} className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }}></div>
-                <span className="text-slate-600">{item.name}</span>
+                <span className="text-slate-600 dark:text-slate-300">{item.name}</span>
               </div>
               <span className="font-semibold">{formatCurrency(item.value)}</span>
             </div>
@@ -835,7 +835,7 @@ function StatsCard({ title, value, color }: { title: string, value: number, colo
       <CardContent className="pt-6">
         <div className="flex justify-between items-start">
           <div>
-            <p className="text-sm font-medium text-slate-500">{title}</p>
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{title}</p>
             <h3 className={cn(
               "text-2xl font-bold mt-1",
               color === "red" ? "text-red-600" : "text-primary"
@@ -887,7 +887,7 @@ function CategorySelector({
   };
 
   const selectClass =
-    "flex h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm " +
+    "flex h-11 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm " +
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all";
 
   return (

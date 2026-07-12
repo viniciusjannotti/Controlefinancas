@@ -108,11 +108,11 @@ export default function EarningsPage() {
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex justify-between items-end">
         <div className="flex flex-col gap-2">
-          <h2 className="text-3xl font-bold tracking-tight text-slate-900">Ganhos</h2>
-          <p className="text-slate-500 text-lg">Gerencie as receitas individuais do casal.</p>
+          <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Ganhos</h2>
+          <p className="text-slate-500 dark:text-slate-400 text-lg">Gerencie as receitas individuais do casal.</p>
         </div>
         <div className="flex items-center gap-4 flex-wrap justify-end">
-          <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
+          <div className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-1 shadow-sm">
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
               <ChevronLeft className="w-4 h-4" />
             </Button>
@@ -137,7 +137,7 @@ export default function EarningsPage() {
       </div>
 
       <Tabs>
-        <TabsList className="bg-slate-200/50">
+        <TabsList className="bg-slate-200 dark:bg-slate-700/50">
           <TabsTrigger value="maria" activeTab={activeTab} setActiveTab={(tab) => { setActiveTab(tab); setEditingEarning(null); }}>
             {memberLabels.maria}
           </TabsTrigger>
@@ -221,7 +221,7 @@ function EarningsTable({
   if (loading) {
     return (
       <Card>
-        <CardContent className="p-8 text-center text-slate-500">
+        <CardContent className="p-8 text-center text-slate-500 dark:text-slate-400">
           Carregando dados...
         </CardContent>
       </Card>
@@ -249,7 +249,7 @@ function EarningsTable({
           <TableBody>
             {data.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-slate-400">
+                <TableCell colSpan={6} className="text-center py-8 text-slate-400 dark:text-slate-500">
                   Nenhum registro encontrado.
                 </TableCell>
               </TableRow>
@@ -268,7 +268,7 @@ function EarningsTable({
                   </TableCell>
                   <TableCell>{item.name}</TableCell>
                   <TableCell>
-                    <span className="px-2 py-1 bg-slate-100 rounded-md text-xs font-medium text-slate-600">
+                    <span className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-md text-xs font-medium text-slate-600 dark:text-slate-300">
                       {item.type || item.service}
                     </span>
                   </TableCell>
@@ -286,9 +286,9 @@ function EarningsTable({
                     </Button>
 
                     {openMenuId === item.id && (
-                      <div className="absolute right-full top-0 mr-2 z-50 w-32 bg-white rounded-lg shadow-lg border border-slate-200 py-1 overflow-hidden animate-in fade-in zoom-in duration-200">
+                      <div className="absolute right-full top-0 mr-2 z-50 w-32 bg-white dark:bg-slate-900 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1 overflow-hidden animate-in fade-in zoom-in duration-200">
                         <button
-                          className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                          className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50"
                           onClick={() => { onEdit(item); setOpenMenuId(null); }}
                         >
                           Editar
@@ -433,7 +433,7 @@ function AddEarningsForm({
     }
   };
 
-  const selectClass = "flex h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all";
+  const selectClass = "flex h-11 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all";
 
   return (
     <Card>
@@ -447,7 +447,7 @@ function AddEarningsForm({
         <div className="space-y-2">
           <Label htmlFor="date">Data</Label>
           <div className="relative">
-            <CalendarIcon className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+            <CalendarIcon className="absolute left-3 top-3 h-4 w-4 text-slate-400 dark:text-slate-500" />
             <Input 
               id="date" 
               type="date" 
@@ -464,7 +464,7 @@ function AddEarningsForm({
               <Label htmlFor="name">{type === "maria" ? "Nome do Paciente" : "Nome do Cliente"}</Label>
               <div className="flex gap-2">
                 <div className="relative flex-1">
-                  <User className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                  <User className="absolute left-3 top-3 h-4 w-4 text-slate-400 dark:text-slate-500" />
                   <select
                     id="name"
                     className={selectClass + " pl-10 appearance-none"}
@@ -487,7 +487,7 @@ function AddEarningsForm({
             </div>
 
             {showAddClient && (
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+              <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
                 <Label className="text-xs">{type === "maria" ? "Novo Paciente" : "Novo Cliente"}</Label>
                 <div className="flex gap-2">
                   <Input
@@ -526,7 +526,7 @@ function AddEarningsForm({
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="notes">Observação <span className="text-slate-400 font-normal">(Opcional)</span></Label>
+                  <Label htmlFor="notes">Observação <span className="text-slate-400 dark:text-slate-500 font-normal">(Opcional)</span></Label>
                   <Input
                     id="notes"
                     placeholder="Detalhes adicionais..."
@@ -542,7 +542,7 @@ function AddEarningsForm({
             <div className="space-y-2">
               <Label htmlFor="name">Nome</Label>
               <div className="relative">
-                <User className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                <User className="absolute left-3 top-3 h-4 w-4 text-slate-400 dark:text-slate-500" />
                 <Input
                   id="name"
                   className="pl-10"
@@ -583,7 +583,7 @@ function AddEarningsForm({
         <div className="space-y-2">
           <Label htmlFor="amount">Valor</Label>
           <div className="relative">
-            <DollarSign className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+            <DollarSign className="absolute left-3 top-3 h-4 w-4 text-slate-400 dark:text-slate-500" />
             <Input 
               id="amount" 
               type="number" 
@@ -628,7 +628,7 @@ function MonthlySummary({ value }: { value: number }) {
       <CardContent>
         <div className="flex items-center justify-between">
           <p className="text-3xl font-bold">{formatCurrency(value)}</p>
-          <div className="h-12 w-12 bg-white/20 rounded-full flex items-center justify-center">
+          <div className="h-12 w-12 bg-white dark:bg-slate-900/20 rounded-full flex items-center justify-center">
             <TrendingUp className="w-6 h-6" />
           </div>
         </div>
@@ -636,8 +636,8 @@ function MonthlySummary({ value }: { value: number }) {
           <Target className="w-4 h-4" />
           <span>Meta Mensal: {formatCurrency(8000)}</span>
         </p>
-        <div className="w-full h-1.5 bg-white/20 rounded-full mt-2 overflow-hidden">
-          <div className="h-full bg-white rounded-full" style={{ width: `${(value / 8000) * 100}%` }}></div>
+        <div className="w-full h-1.5 bg-white dark:bg-slate-900/20 rounded-full mt-2 overflow-hidden">
+          <div className="h-full bg-white dark:bg-slate-900 rounded-full" style={{ width: `${(value / 8000) * 100}%` }}></div>
         </div>
       </CardContent>
     </Card>

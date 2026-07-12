@@ -53,7 +53,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose?: () =>
       "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200",
       pathname === href || (pathname === "/" && href === "/dashboard")
         ? "bg-primary/10 text-primary shadow-sm"
-        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
     );
 
   return (
@@ -67,7 +67,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose?: () =>
       )}
 
       <div className={cn(
-        "flex flex-col h-full bg-white border-r border-slate-200 w-64 fixed left-0 top-0 z-50 transition-transform duration-300 ease-in-out",
+        "flex flex-col h-full bg-white border-r border-slate-200 w-64 fixed left-0 top-0 z-50 transition-transform duration-300 ease-in-out dark:bg-slate-900 dark:border-slate-800",
         !isOpen && "-translate-x-full lg:translate-x-0"
       )}>
       {/* Logo */}
@@ -102,7 +102,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose?: () =>
               "w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200",
               isUnderGames
                 ? "bg-primary/10 text-primary shadow-sm"
-                : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
             )}
           >
             <Gamepad2
@@ -118,7 +118,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose?: () =>
 
           {/* Submenu */}
           {gamesOpen && (
-            <div className="ml-5 mt-1 space-y-1 border-l-2 border-slate-100 pl-3 animate-in slide-in-from-top-2 duration-200">
+            <div className="ml-5 mt-1 space-y-1 border-l-2 border-slate-100 dark:border-slate-800 pl-3 animate-in slide-in-from-top-2 duration-200">
               {gamesSubmenu.map((item) => (
                 <Link key={item.name} href={item.href} className={linkClass(item.href)}>
                   <item.icon
@@ -151,14 +151,14 @@ export function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose?: () =>
       </div>
 
       {/* User card */}
-      <div className="p-4 border-t border-slate-100">
-        <div className="bg-slate-50 rounded-xl p-3 flex items-center gap-3">
+      <div className="p-4 border-t border-slate-100 dark:border-slate-800">
+        <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-3 flex items-center gap-3">
           <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm shrink-0">
             {userInitials}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-slate-900 truncate">{userName || "Usuário"}</p>
-            <p className="text-xs text-slate-500 truncate">{user?.email}</p>
+            <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">{userName || "Usuário"}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{user?.email}</p>
           </div>
           <button 
             onClick={() => signOut()}

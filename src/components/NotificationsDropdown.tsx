@@ -150,7 +150,7 @@ export function NotificationsDropdown() {
     <div className="relative" ref={dropdownRef}>
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2.5 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 rounded-full transition-all text-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/20"
+        className="relative p-2.5 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 rounded-full transition-all text-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/20 dark:bg-slate-900 dark:border-slate-700 dark:hover:bg-slate-800 dark:text-slate-400"
         aria-label="Notificações"
       >
         <Bell className="w-5 h-5" />
@@ -162,11 +162,11 @@ export function NotificationsDropdown() {
       </button>
 
       {isOpen && (
-        <div className="absolute top-12 left-0 md:left-auto md:right-0 w-80 sm:w-96 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden animate-in slide-in-from-top-2 duration-200">
-          <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+        <div className="absolute top-12 left-0 md:left-auto md:right-0 w-80 sm:w-96 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden animate-in slide-in-from-top-2 duration-200 dark:bg-slate-900 dark:border-slate-700">
+          <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 dark:border-slate-800 dark:bg-slate-800/50">
             <div>
-              <h3 className="font-bold text-slate-800">Lembretes & Alertas</h3>
-              <p className="text-xs text-slate-500">Avisos de contas e ganhos recorrentes</p>
+              <h3 className="font-bold text-slate-800 dark:text-slate-100">Lembretes & Alertas</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Avisos de contas e ganhos recorrentes</p>
             </div>
             {!showForm && (
               <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setShowForm(true)}>
@@ -190,13 +190,13 @@ export function NotificationsDropdown() {
                     value={formData.name}
                     onChange={e => setFormData({...formData, name: e.target.value})}
                   />
-                  <p className="text-[10px] text-slate-400">Dica: Use um nome parecido com o que você cadastra no Ganho/Gasto para a baixa automática.</p>
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500">Dica: Use um nome parecido com o que você cadastra no Ganho/Gasto para a baixa automática.</p>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <Label>Tipo</Label>
-                    <select 
-                      className="flex h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+                    <select
+                      className="flex h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                       value={formData.type}
                       onChange={e => setFormData({...formData, type: e.target.value as any})}
                     >
@@ -226,17 +226,17 @@ export function NotificationsDropdown() {
                 </Button>
                 
                 {/* List of ALL reminders for management */}
-                <div className="mt-6 pt-4 border-t border-slate-100">
-                  <h4 className="text-xs font-bold text-slate-500 uppercase mb-3">Lembretes Cadastrados</h4>
+                <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
+                  <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-3">Lembretes Cadastrados</h4>
                   {reminders.length === 0 ? (
-                    <p className="text-xs text-slate-400 italic">Nenhum lembrete configurado.</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 italic">Nenhum lembrete configurado.</p>
                   ) : (
                     <div className="space-y-2">
                       {reminders.map(r => (
-                        <div key={r.id} className="flex items-center justify-between bg-slate-50 p-2 rounded border border-slate-100">
+                        <div key={r.id} className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 p-2 rounded border border-slate-100 dark:border-slate-700">
                           <div>
-                            <p className="text-sm font-semibold">{r.name}</p>
-                            <p className="text-[10px] text-slate-500">Dia {r.dueDay} • {r.type}</p>
+                            <p className="text-sm font-semibold dark:text-slate-100">{r.name}</p>
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400">Dia {r.dueDay} • {r.type}</p>
                           </div>
                           <button onClick={() => handleDelete(r.id!)} className="text-red-400 hover:text-red-600 p-1">
                             <Trash2 className="w-4 h-4" />
@@ -252,8 +252,8 @@ export function NotificationsDropdown() {
                 {activeAlerts.length === 0 ? (
                   <div className="py-8 text-center flex flex-col items-center">
                     <CheckCircle2 className="w-12 h-12 text-emerald-400 mb-3 opacity-20" />
-                    <p className="text-slate-500 font-medium text-sm">Tudo certo por aqui!</p>
-                    <p className="text-xs text-slate-400 mt-1">Nenhum alerta pendente para os próximos dias.</p>
+                    <p className="text-slate-500 dark:text-slate-400 font-medium text-sm">Tudo certo por aqui!</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Nenhum alerta pendente para os próximos dias.</p>
                   </div>
                 ) : (
                   activeAlerts.map(alert => (

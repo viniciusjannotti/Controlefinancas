@@ -24,10 +24,15 @@ service cloud.firestore {
     }
 
     // ── Perfis de usuário ────────────────────────────────────────────────────────
-    // Cada usuário só pode ler e escrever seu próprio perfil
+    // Cada usuário só pode escrever o próprio perfil.
+    // Leitura: o próprio usuário, ou qualquer membro da mesma conta (necessário
+    // para exibir os nomes reais dos membros da conta em Ganhos/Gastos/Investimentos).
     match /users/{userId} {
-      allow read, write: if request.auth != null
-                         && request.auth.uid == userId;
+      allow write: if request.auth != null
+                  && request.auth.uid == userId;
+
+      allow read: if request.auth != null
+                 && (request.auth.uid == userId || isMember(resource.data.accountId));
     }
 
     // ── Coleções financeiras (ganhos, gastos, investimentos, proventos, lembretes) ─

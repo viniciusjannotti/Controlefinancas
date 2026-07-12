@@ -4,6 +4,19 @@ import "./globals.css";
 import { GameProvider } from "@/lib/game/GameContext";
 import { ClientLayout } from "@/components/ClientLayout";
 import { AuthProvider } from "@/lib/auth/AuthContext";
+import { ThemeProvider } from "@/lib/theme/ThemeContext";
+
+// Aplica o tema salvo antes do primeiro paint, evitando flash de tela clara
+const THEME_INIT_SCRIPT = `
+(function() {
+  try {
+    var theme = localStorage.getItem('theme');
+    if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark');
+    }
+  } catch (e) {}
+})();
+`;
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -30,15 +43,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR">
-      <body className={`${inter.className} min-h-screen bg-slate-50`}>
-        <AuthProvider>
-          <GameProvider>
-            <ClientLayout>
-              {children}
-            </ClientLayout>
-          </GameProvider>
-        </AuthProvider>
+    <html lang="pt-BR" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
+      <body className={`${inter.className} min-h-screen bg-slate-50 dark:bg-slate-950`} suppressHydrationWarning>
+        <ThemeProvider>
+          <AuthProvider>
+            <GameProvider>
+              <ClientLayout>
+                {children}
+              </ClientLayout>
+            </GameProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
