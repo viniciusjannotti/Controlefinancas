@@ -14,7 +14,8 @@ import {
   DollarSign,
   TrendingUp,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  X
 } from "lucide-react";
 import { format, addMonths, subMonths, isSameMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -32,7 +33,7 @@ import {
   TabsContent 
 } from "@/components/ui/Tabs";
 import { Button, Input, Label, Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/index";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, cn } from "@/lib/utils";
 import { 
   addEarning, 
   getEarnings, 
@@ -206,6 +207,8 @@ export default function EarningsPage() {
   );
 }
 
+const EARNINGS_PAYMENT_METHODS = ["Pix", "Cartão", "Boleto", "Dinheiro", "Transferência"];
+
 function EarningsTable({
   type, legacy, data, loading, onDelete, onEdit
 }: {
@@ -217,6 +220,20 @@ function EarningsTable({
   onEdit: (item: any) => void
 }) {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [activeMethods, setActiveMethods] = useState<string[]>([...EARNINGS_PAYMENT_METHODS]);
+  const [showFilters, setShowFilters] = useState(false);
+
+  const filteredData = data.filter(item => {
+    const matchesSearch = !searchTerm ||
+      (item.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.type || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.method || "").toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesMethod = activeMethods.length === 0 || activeMethods.includes(item.method || "");
+    return matchesSearch && matchesMethod;
+  });
+
+  const hasActiveFilter = activeMethods.length < EARNINGS_PAYMENT_METHODS.length;
 
   if (loading) {
     return (
@@ -231,8 +248,82 @@ function EarningsTable({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Histórico de Ganhos</CardTitle>
-        <CardDescription>Mostrando os registros salvos.</CardDescription>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <CardTitle>Histórico de Ganhos</CardTitle>
+            <CardDescription>Mostrando os registros salvos.</CardDescription>
+          </div>
+          <div className="flex gap-2">
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Buscar..."
+                className="h-9 w-[160px] pl-9 pr-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              {searchTerm && (
+                <button className="absolute right-2 top-2.5 text-slate-400 hover:text-slate-600" onClick={() => setSearchTerm("")}>
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            {/* Method Filter */}
+            <div className="relative">
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className={cn(
+                  "h-9 px-3 flex items-center gap-2 rounded-lg border text-sm font-medium transition-colors",
+                  hasActiveFilter
+                    ? "border-primary text-primary bg-primary/5"
+                    : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                )}
+              >
+                <Filter className="w-4 h-4" />
+                Pagamento
+                {hasActiveFilter && <span className="w-2 h-2 rounded-full bg-primary" />}
+              </button>
+              {showFilters && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowFilters(false)} />
+                  <div className="absolute right-0 top-full mt-2 z-50 w-52 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 p-3 animate-in fade-in zoom-in duration-200">
+                    <div className="flex justify-between items-center mb-2 px-1">
+                      <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Forma de Pagamento</span>
+                      <button
+                        className="text-[11px] text-primary font-medium hover:underline"
+                        onClick={() => setActiveMethods(
+                          activeMethods.length === EARNINGS_PAYMENT_METHODS.length ? [] : [...EARNINGS_PAYMENT_METHODS]
+                        )}
+                      >
+                        {activeMethods.length === EARNINGS_PAYMENT_METHODS.length ? "Limpar" : "Todos"}
+                      </button>
+                    </div>
+                    <div className="space-y-1">
+                      {EARNINGS_PAYMENT_METHODS.map(method => (
+                        <label
+                          key={method}
+                          className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer text-sm text-slate-700 dark:text-slate-300"
+                        >
+                          <input
+                            type="checkbox"
+                            className="rounded border-slate-300 accent-primary"
+                            checked={activeMethods.includes(method)}
+                            onChange={() => setActiveMethods(prev =>
+                              prev.includes(method) ? prev.filter(m => m !== method) : [...prev, method]
+                            )}
+                          />
+                          {method}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         <Table>
@@ -247,14 +338,14 @@ function EarningsTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.length === 0 ? (
+            {filteredData.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-8 text-slate-400 dark:text-slate-500">
                   Nenhum registro encontrado.
                 </TableCell>
               </TableRow>
             ) : (
-              data.map((item) => (
+              filteredData.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell className="font-medium">
                     {(() => {

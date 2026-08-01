@@ -123,11 +123,13 @@ export default function ExpensesPage() {
   const [editingExpense, setEditingExpense] = useState<any | null>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [searchTerm, setSearchTerm] = useState("");
+  const PAYMENT_METHODS = ["Pix", "Cartão", "Boleto", "Dinheiro", "Transferência"];
   const [filters, setFilters] = useState({
     category: "",
     subcategory: "",
     startDate: "",
-    endDate: ""
+    endDate: "",
+    methods: ["Pix", "Cartão", "Boleto", "Dinheiro", "Transferência"] as string[]
   });
 
   const fetchExpenses = React.useCallback(async () => {
@@ -187,6 +189,9 @@ export default function ExpensesPage() {
     const catSub = (e.category || "").split(" > ")[1] || "";
     const matchesSubcategory = !filters.subcategory || catSub === filters.subcategory;
 
+    // Payment method filter
+    const matchesMethod = filters.methods.length === 0 || filters.methods.includes(e.method || "") || (!e.method && filters.methods.includes(""));
+
     // Date range filter
     let matchesDate = true;
     if (filters.startDate || filters.endDate) {
@@ -202,7 +207,7 @@ export default function ExpensesPage() {
       matchesDate = isSameMonth(d, currentMonth);
     }
 
-    return matchesSearch && matchesCategory && matchesSubcategory && matchesDate;
+    return matchesSearch && matchesCategory && matchesSubcategory && matchesMethod && matchesDate;
   });
 
   const totalMonthly = filteredExpenses.reduce((acc: number, curr: any) => acc + (Number(curr.amount) || 0), 0);
@@ -261,6 +266,7 @@ export default function ExpensesPage() {
             onSearchChange={setSearchTerm}
             filters={filters}
             onFilterChange={setFilters}
+            paymentMethods={["Pix", "Cartão", "Boleto", "Dinheiro", "Transferência"]}
           />
         </div>
 
@@ -292,7 +298,8 @@ function ExpensesTable({
   searchTerm,
   onSearchChange,
   filters,
-  onFilterChange
+  onFilterChange,
+  paymentMethods
 }: {
   data: any[],
   memberLabels: { maria: string; vinicius: string },
@@ -302,7 +309,8 @@ function ExpensesTable({
   searchTerm: string,
   onSearchChange: (val: string) => void,
   filters: any,
-  onFilterChange: (val: any) => void
+  onFilterChange: (val: any) => void,
+  paymentMethods: string[]
 }) {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
@@ -335,94 +343,134 @@ function ExpensesTable({
           <div className="relative">
             <Button 
               variant={showFilters ? "secondary" : "outline"} 
-              className={cn("h-9 px-3", (filters.category || filters.subcategory || filters.startDate || filters.endDate) && "border-primary text-primary")}
+              className={cn("h-9 px-3", (filters.category || filters.subcategory || filters.startDate || filters.endDate || filters.methods?.length < paymentMethods.length) && "border-primary text-primary")}
               onClick={() => setShowFilters(!showFilters)}
             >
               <Filter className="w-4 h-4 mr-2" />
               Filtrar
-              {(filters.category || filters.subcategory || filters.startDate || filters.endDate) && (
+              {(filters.category || filters.subcategory || filters.startDate || filters.endDate || (filters.methods?.length < paymentMethods.length)) && (
                 <span className="ml-2 w-2 h-2 rounded-full bg-primary"></span>
               )}
             </Button>
 
             {showFilters && (
-              <div className="absolute right-0 top-full mt-2 z-50 w-72 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 p-4 animate-in fade-in zoom-in duration-200">
-                <div className="flex justify-between items-center mb-4">
-                  <h4 className="font-semibold text-sm">Filtros Avançados</h4>
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setShowFilters(false)}>
-                    <X className="w-3 h-3" />
-                  </Button>
-                </div>
-                
-                <div className="space-y-4">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Categoria</Label>
-                    <select 
-                      className="w-full h-9 rounded-lg border border-slate-200 dark:border-slate-700 text-xs px-2"
-                      value={filters.category}
-                      onChange={(e) => onFilterChange({ ...filters, category: e.target.value, subcategory: "" })}
-                    >
-                      <option value="">Todas as Categorias</option>
-                      {categoryTree.map(c => (
-                        <option key={c.label} value={c.label}>{c.label}</option>
-                      ))}
-                    </select>
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowFilters(false)} />
+                <div className="absolute right-0 top-full mt-2 z-50 w-72 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 p-4 animate-in fade-in zoom-in duration-200">
+                  <div className="flex justify-between items-center mb-4">
+                    <h4 className="font-semibold text-sm">Filtros Avançados</h4>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setShowFilters(false)}>
+                      <X className="w-3 h-3" />
+                    </Button>
                   </div>
-
-                  {filters.category && availableSubcategories.length > 0 && (
-                    <div className="space-y-1.5 animate-in slide-in-from-top-1 duration-200">
-                      <Label className="text-xs">Subcategoria</Label>
+                  
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Categoria</Label>
                       <select 
-                        className="w-full h-9 rounded-lg border border-slate-200 dark:border-slate-700 text-xs px-2"
-                        value={filters.subcategory}
-                        onChange={(e) => onFilterChange({ ...filters, subcategory: e.target.value })}
+                        className="w-full h-9 rounded-lg border border-slate-200 dark:border-slate-700 text-xs px-2 bg-white dark:bg-slate-900"
+                        value={filters.category}
+                        onChange={(e) => onFilterChange({ ...filters, category: e.target.value, subcategory: "" })}
                       >
-                        <option value="">Todas as Subcategorias</option>
-                        {availableSubcategories.map(s => (
-                          <option key={s} value={s}>{s}</option>
+                        <option value="">Todas as Categorias</option>
+                        {categoryTree.map(c => (
+                          <option key={c.label} value={c.label}>{c.label}</option>
                         ))}
                       </select>
                     </div>
-                  )}
 
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">De</Label>
-                      <Input 
-                        type="date" 
-                        className="h-9 text-xs px-2" 
-                        value={filters.startDate}
-                        onChange={(e) => onFilterChange({ ...filters, startDate: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Até</Label>
-                      <Input 
-                        type="date" 
-                        className="h-9 text-xs px-2" 
-                        value={filters.endDate}
-                        onChange={(e) => onFilterChange({ ...filters, endDate: e.target.value })}
-                      />
-                    </div>
-                  </div>
+                    {filters.category && availableSubcategories.length > 0 && (
+                      <div className="space-y-1.5 animate-in slide-in-from-top-1 duration-200">
+                        <Label className="text-xs">Subcategoria</Label>
+                        <select 
+                          className="w-full h-9 rounded-lg border border-slate-200 dark:border-slate-700 text-xs px-2 bg-white dark:bg-slate-900"
+                          value={filters.subcategory}
+                          onChange={(e) => onFilterChange({ ...filters, subcategory: e.target.value })}
+                        >
+                          <option value="">Todas as Subcategorias</option>
+                          {availableSubcategories.map(s => (
+                            <option key={s} value={s}>{s}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
 
-                  <div className="pt-2 flex gap-2">
-                    <Button 
-                      variant="ghost" 
-                      className="flex-1 h-8 text-xs"
-                      onClick={() => onFilterChange({ category: "", subcategory: "", startDate: "", endDate: "" })}
-                    >
-                      Limpar
-                    </Button>
-                    <Button 
-                      className="flex-1 h-8 text-xs"
-                      onClick={() => setShowFilters(false)}
-                    >
-                      Aplicar
-                    </Button>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <Label className="text-xs">Forma de Pagamento</Label>
+                        <button
+                          className="text-[11px] text-primary font-medium hover:underline"
+                          onClick={() => onFilterChange({
+                            ...filters,
+                            methods: filters.methods?.length === paymentMethods.length ? [] : [...paymentMethods]
+                          })}
+                        >
+                          {filters.methods?.length === paymentMethods.length ? "Limpar" : "Todos"}
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-1">
+                        {paymentMethods.map(method => (
+                          <label
+                            key={method}
+                            className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer text-xs text-slate-700 dark:text-slate-300"
+                          >
+                            <input
+                              type="checkbox"
+                              className="rounded border-slate-300 text-primary focus:ring-primary/30 accent-primary"
+                              checked={filters.methods?.includes(method) ?? true}
+                              onChange={() => {
+                                const current = filters.methods ?? paymentMethods;
+                                const next = current.includes(method)
+                                  ? current.filter((m: string) => m !== method)
+                                  : [...current, method];
+                                onFilterChange({ ...filters, methods: next });
+                              }}
+                            />
+                            {method}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">De</Label>
+                        <Input 
+                          type="date" 
+                          className="h-9 text-xs px-2" 
+                          value={filters.startDate}
+                          onChange={(e) => onFilterChange({ ...filters, startDate: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Até</Label>
+                        <Input 
+                          type="date" 
+                          className="h-9 text-xs px-2" 
+                          value={filters.endDate}
+                          onChange={(e) => onFilterChange({ ...filters, endDate: e.target.value })}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="pt-2 flex gap-2">
+                      <Button 
+                        variant="ghost" 
+                        className="flex-1 h-8 text-xs"
+                        onClick={() => onFilterChange({ category: "", subcategory: "", startDate: "", endDate: "", methods: [...paymentMethods] })}
+                      >
+                        Limpar Tudo
+                      </Button>
+                      <Button 
+                        className="flex-1 h-8 text-xs"
+                        onClick={() => setShowFilters(false)}
+                      >
+                        Aplicar
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </>
             )}
           </div>
           <div className="relative">
