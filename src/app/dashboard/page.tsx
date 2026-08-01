@@ -56,6 +56,7 @@ export default function Dashboard() {
   const [allExpensesList, setAllExpensesList] = useState<any[]>([]);
   const [categoryMonth, setCategoryMonth] = useState<Date>(new Date());
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
 
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [historyTopic, setHistoryTopic] = useState<'Ganhos' | 'Gastos'>('Gastos');
@@ -161,6 +162,24 @@ export default function Dashboard() {
 
     fetchData();
   }, [accountId]);
+
+  const subcategoryTransactions = React.useMemo(() => {
+    if (!selectedCategory || !selectedSubcategory) return [];
+    return allExpensesList.filter(e => {
+      const d = e.date?.seconds
+        ? new Date(e.date.seconds * 1000)
+        : (typeof e.date === 'string' ? new Date(e.date + 'T00:00:00') : new Date(e.date));
+      if (!isSameMonth(d, categoryMonth)) return false;
+      const parts = (e.category || 'Outros').split(' > ');
+      const parent = parts[0];
+      const sub = parts[1] || parent;
+      return parent === selectedCategory && sub === selectedSubcategory;
+    }).sort((a, b) => {
+      const da = a.date?.seconds ? new Date(a.date.seconds * 1000) : new Date(a.date + 'T00:00:00');
+      const db = b.date?.seconds ? new Date(b.date.seconds * 1000) : new Date(b.date + 'T00:00:00');
+      return db.getTime() - da.getTime();
+    });
+  }, [allExpensesList, categoryMonth, selectedCategory, selectedSubcategory]);
 
   const { categoryData, detailedCategoryData } = React.useMemo(() => {
     const expensesByCategory: Record<string, number> = {};
@@ -476,7 +495,7 @@ export default function Dashboard() {
                 </div>
               </div>
               <button
-                onClick={() => setSelectedCategory(null)}
+                onClick={() => { setSelectedCategory(null); setSelectedSubcategory(null); }}
                 className="p-2 hover:bg-slate-100 rounded-full transition-colors"
               >
                 <X className="w-6 h-6 text-slate-400 dark:text-slate-500" />
@@ -487,7 +506,7 @@ export default function Dashboard() {
                 {categoryData.map(cat => (
                   <button
                     key={cat.name}
-                    onClick={() => setSelectedCategory(cat.name)}
+                    onClick={() => { setSelectedCategory(cat.name); setSelectedSubcategory(null); }}
                     className={cn(
                       "text-left px-4 py-3 rounded-xl transition-all font-medium text-sm flex justify-between items-center whitespace-nowrap md:whitespace-normal group",
                       selectedCategory === cat.name
@@ -542,17 +561,74 @@ export default function Dashboard() {
                   <div className="space-y-4">
                     <h4 className="font-bold text-slate-500 dark:text-slate-400 text-sm uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 pb-2">Subcategorias</h4>
                     <div className="space-y-2">
-                      {(detailedCategoryData[selectedCategory] || []).map((item, i) => (
-                        <div key={i} className="flex items-center justify-between group p-3 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 hover:shadow-sm rounded-xl transition-all border border-transparent hover:border-slate-200">
-                          <div className="flex items-center gap-3">
-                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-                            <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{item.name}</span>
+                      {(detailedCategoryData[selectedCategory] || []).map((item, i) => {
+                        const isExpanded = selectedSubcategory === item.name;
+                        return (
+                          <div key={i}>
+                            <button
+                              onClick={() => setSelectedSubcategory(isExpanded ? null : item.name)}
+                              className={cn(
+                                "w-full flex items-center justify-between group p-3 rounded-xl transition-all border text-left",
+                                isExpanded
+                                  ? "bg-primary/10 border-primary/30 shadow-sm"
+                                  : "bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 hover:shadow-sm border-transparent hover:border-slate-200"
+                              )}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                                <span className={cn(
+                                  "text-sm font-semibold transition-colors",
+                                  isExpanded ? "text-primary" : "text-slate-700 dark:text-slate-300"
+                                )}>{item.name}</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-right">
+                                <span className={cn(
+                                  "text-sm font-bold",
+                                  isExpanded ? "text-primary" : "text-slate-900 dark:text-slate-100"
+                                )}>{formatCurrency(item.value)}</span>
+                                <ChevronRight className={cn(
+                                  "w-4 h-4 transition-transform duration-200 shrink-0",
+                                  isExpanded ? "rotate-90 text-primary" : "text-slate-400"
+                                )} />
+                              </div>
+                            </button>
+
+                            {isExpanded && (
+                              <div className="mt-1 mb-2 ml-5 border-l-2 border-primary/20 pl-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                                {subcategoryTransactions.length === 0 ? (
+                                  <p className="text-xs text-slate-400 italic py-2">Nenhuma transação encontrada.</p>
+                                ) : (
+                                  <div className="space-y-1 py-1">
+                                    {subcategoryTransactions.map((tx, ti) => {
+                                      const txDate = tx.date?.seconds
+                                        ? new Date(tx.date.seconds * 1000)
+                                        : new Date(tx.date + 'T00:00:00');
+                                      return (
+                                        <div key={ti} className="flex items-center justify-between py-2 px-3 rounded-lg bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 hover:border-slate-200 transition-all group/tx">
+                                          <div className="flex flex-col min-w-0">
+                                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">{tx.name || tx.description || '—'}</span>
+                                            <div className="flex items-center gap-2 mt-0.5">
+                                              <span className="text-[10px] text-slate-400">{format(txDate, "dd/MM/yyyy")}</span>
+                                              {tx.method && (
+                                                <span className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-500 px-1.5 py-0.5 rounded-full font-medium">{tx.method}</span>
+                                              )}
+                                            </div>
+                                          </div>
+                                          <span className="text-sm font-bold text-red-500 shrink-0 ml-3">{formatCurrency(Number(tx.amount))}</span>
+                                        </div>
+                                      );
+                                    })}
+                                    <div className="flex justify-between items-center pt-1 px-3">
+                                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{subcategoryTransactions.length} transaç{subcategoryTransactions.length === 1 ? 'ão' : 'ões'}</span>
+                                      <span className="text-xs font-black text-primary">{formatCurrency(item.value)}</span>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
-                          <div className="flex items-center gap-3 text-right">
-                            <span className="text-sm font-bold text-slate-900 dark:text-slate-100">{formatCurrency(item.value)}</span>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
