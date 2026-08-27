@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/AuthContext";
-import { Eye, EyeOff, LogIn, UserPlus, Wallet } from "lucide-react";
+import { Eye, EyeOff, LogIn, UserPlus, Wallet, KeyRound, ArrowLeft, CheckCircle2 } from "lucide-react";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function translateFirebaseError(code: string): string {
@@ -22,13 +22,14 @@ function translateFirebaseError(code: string): string {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function LoginPage() {
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, resetPassword } = useAuth();
   const router = useRouter();
 
-  const [mode, setMode] = useState<"login" | "register">("login");
+  const [mode, setMode] = useState<"login" | "register" | "forgot">("login");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [resetSent, setResetSent] = useState(false);
   const [linkAccount, setLinkAccount] = useState(false);
 
   const [form, setForm] = useState({
@@ -48,7 +49,8 @@ export default function LoginPage() {
     try {
       if (mode === "login") {
         await signIn(form.email, form.password);
-      } else {
+        router.replace("/dashboard");
+      } else if (mode === "register") {
         if (!form.name.trim()) {
           setError("Informe seu nome.");
           setLoading(false);
@@ -60,13 +62,27 @@ export default function LoginPage() {
           form.name,
           linkAccount && form.accountId ? form.accountId : undefined
         );
+        router.replace("/dashboard");
+      } else if (mode === "forgot") {
+        if (!form.email.trim()) {
+          setError("Informe seu e-mail.");
+          setLoading(false);
+          return;
+        }
+        await resetPassword(form.email);
+        setResetSent(true);
       }
-      router.replace("/dashboard");
     } catch (err: any) {
       setError(translateFirebaseError(err.code ?? ""));
     } finally {
       setLoading(false);
     }
+  };
+
+  const switchMode = (newMode: "login" | "register" | "forgot") => {
+    setMode(newMode);
+    setError("");
+    setResetSent(false);
   };
 
   return (
@@ -82,172 +98,274 @@ export default function LoginPage() {
             <Wallet className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-3xl font-bold text-white tracking-tight">M &amp; V Finanças</h1>
-          <p className="text-slate-400 dark:text-slate-500 mt-1 text-sm">Gestão financeira do casal</p>
+          <p className="text-slate-400 mt-1 text-sm">Gestão financeira do casal</p>
         </div>
 
         {/* Card */}
-        <div className="bg-white dark:bg-slate-900/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl">
-          {/* Tabs */}
-          <div className="flex bg-white dark:bg-slate-900/5 rounded-xl p-1 gap-1 mb-8">
-            <button
-              type="button"
-              onClick={() => { setMode("login"); setError(""); }}
-              className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
-                mode === "login"
-                  ? "bg-primary text-white shadow-md shadow-primary/30"
-                  : "text-slate-400 dark:text-slate-500 hover:text-white"
-              }`}
-            >
-              <LogIn className="w-4 h-4 inline mr-2" />
-              Entrar
-            </button>
-            <button
-              type="button"
-              onClick={() => { setMode("register"); setError(""); }}
-              className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
-                mode === "register"
-                  ? "bg-primary text-white shadow-md shadow-primary/30"
-                  : "text-slate-400 dark:text-slate-500 hover:text-white"
-              }`}
-            >
-              <UserPlus className="w-4 h-4 inline mr-2" />
-              Criar Conta
-            </button>
-          </div>
+        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl">
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Name (register only) */}
-            {mode === "register" && (
-              <div className="animate-in slide-in-from-top-2 duration-200">
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  Seu Nome
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ex: Maria Cecília"
-                  value={form.name}
-                  onChange={(e) => update("name", e.target.value)}
-                  className="w-full bg-white dark:bg-slate-900/5 border border-white/10 text-white placeholder-slate-500 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
-                />
-              </div>
-            )}
-
-            {/* Email */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                E-mail
-              </label>
-              <input
-                type="email"
-                required
-                placeholder="seu@email.com"
-                value={form.email}
-                onChange={(e) => update("email", e.target.value)}
-                className="w-full bg-white dark:bg-slate-900/5 border border-white/10 text-white placeholder-slate-500 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
-              />
-            </div>
-
-            {/* Password */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                Senha
-              </label>
-              <div className="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  required
-                  placeholder="••••••••"
-                  value={form.password}
-                  onChange={(e) => update("password", e.target.value)}
-                  className="w-full bg-white dark:bg-slate-900/5 border border-white/10 text-white placeholder-slate-500 rounded-xl px-4 py-3 pr-11 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
-                />
+          {/* ── MODO: ESQUECI A SENHA ── */}
+          {mode === "forgot" ? (
+            <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+              {/* Header */}
+              <div className="flex items-center gap-3 mb-6">
                 <button
                   type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3 top-3.5 text-slate-400 dark:text-slate-500 hover:text-white transition-colors"
+                  onClick={() => switchMode("login")}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-all"
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  <ArrowLeft className="w-4 h-4" />
+                </button>
+                <div>
+                  <h2 className="text-white font-bold text-lg">Recuperar senha</h2>
+                  <p className="text-slate-400 text-xs">Enviaremos um link para o seu e-mail</p>
+                </div>
+              </div>
+
+              {resetSent ? (
+                /* Sucesso */
+                <div className="text-center py-6 animate-in fade-in zoom-in-95 duration-300">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 mb-4">
+                    <CheckCircle2 className="w-8 h-8 text-emerald-400" />
+                  </div>
+                  <h3 className="text-white font-bold text-lg mb-2">E-mail enviado!</h3>
+                  <p className="text-slate-400 text-sm leading-relaxed mb-6">
+                    Verifique a caixa de entrada de{" "}
+                    <span className="text-white font-semibold">{form.email}</span>.
+                    O link expira em 1 hora.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => switchMode("login")}
+                    className="w-full bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl py-3 text-sm transition-all shadow-lg shadow-primary/30 active:scale-[0.98]"
+                  >
+                    Voltar ao login
+                  </button>
+                </div>
+              ) : (
+                /* Formulário de recuperação */
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                      E-mail da conta
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      autoFocus
+                      placeholder="seu@email.com"
+                      value={form.email}
+                      onChange={(e) => update("email", e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 text-white placeholder-slate-500 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
+                    />
+                  </div>
+
+                  {error && (
+                    <div className="bg-red-500/10 border border-red-500/30 text-red-300 text-sm rounded-xl px-4 py-3 animate-in fade-in duration-200">
+                      {error}
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl py-3.5 text-sm transition-all duration-200 shadow-lg shadow-primary/30 disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.98] flex items-center justify-center gap-2"
+                  >
+                    {loading ? (
+                      <>
+                        <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                        Enviando...
+                      </>
+                    ) : (
+                      <>
+                        <KeyRound className="w-4 h-4" />
+                        Enviar link de recuperação
+                      </>
+                    )}
+                  </button>
+                </form>
+              )}
+            </div>
+          ) : (
+            /* ── MODO: LOGIN / CADASTRO ── */
+            <>
+              {/* Tabs */}
+              <div className="flex bg-white/5 rounded-xl p-1 gap-1 mb-8">
+                <button
+                  type="button"
+                  onClick={() => switchMode("login")}
+                  className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                    mode === "login"
+                      ? "bg-primary text-white shadow-md shadow-primary/30"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  <LogIn className="w-4 h-4 inline mr-2" />
+                  Entrar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchMode("register")}
+                  className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                    mode === "register"
+                      ? "bg-primary text-white shadow-md shadow-primary/30"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  <UserPlus className="w-4 h-4 inline mr-2" />
+                  Criar Conta
                 </button>
               </div>
-            </div>
 
-            {/* Account link option (register only) */}
-            {mode === "register" && (
-              <div className="animate-in slide-in-from-top-2 duration-200 space-y-3">
-                <label className="flex items-center gap-2 cursor-pointer group">
-                  <div
-                    className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all ${
-                      linkAccount ? "bg-primary border-primary" : "border-slate-500 group-hover:border-slate-300"
-                    }`}
-                    onClick={() => setLinkAccount((v) => !v)}
-                  >
-                    {linkAccount && (
-                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
-                  </div>
-                  <span className="text-sm text-slate-300">Entrar em uma conta existente</span>
-                </label>
-
-                {linkAccount && (
-                  <div className="animate-in slide-in-from-top-1 duration-150">
+              <form onSubmit={handleSubmit} className="space-y-5">
+                {/* Name (register only) */}
+                {mode === "register" && (
+                  <div className="animate-in slide-in-from-top-2 duration-200">
                     <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                      Código da Conta
+                      Seu Nome
                     </label>
                     <input
                       type="text"
-                      placeholder="Cole o código da conta aqui"
-                      value={form.accountId}
-                      onChange={(e) => update("accountId", e.target.value)}
-                      className="w-full bg-white dark:bg-slate-900/5 border border-white/10 text-white placeholder-slate-500 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all font-mono"
+                      required
+                      placeholder="Ex: Maria Cecília"
+                      value={form.name}
+                      onChange={(e) => update("name", e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 text-white placeholder-slate-500 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
                     />
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                      O código está disponível em Configurações → Conta
-                    </p>
                   </div>
                 )}
-              </div>
-            )}
 
-            {/* Error */}
-            {error && (
-              <div className="bg-red-500/10 border border-red-500/30 text-red-300 text-sm rounded-xl px-4 py-3 animate-in fade-in duration-200">
-                {error}
-              </div>
-            )}
+                {/* Email */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    E-mail
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="seu@email.com"
+                    value={form.email}
+                    onChange={(e) => update("email", e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 text-white placeholder-slate-500 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
+                  />
+                </div>
 
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl py-3.5 text-sm transition-all duration-200 shadow-lg shadow-primary/30 disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.98] flex items-center justify-center gap-2 mt-2"
-            >
-              {loading ? (
-                <>
-                  <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  Aguarde...
-                </>
-              ) : mode === "login" ? (
-                <>
-                  <LogIn className="w-4 h-4" />
-                  Entrar
-                </>
-              ) : (
-                <>
-                  <UserPlus className="w-4 h-4" />
-                  Criar Conta
-                </>
-              )}
-            </button>
-          </form>
+                {/* Password */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-semibold text-slate-300">
+                      Senha
+                    </label>
+                    {mode === "login" && (
+                      <button
+                        type="button"
+                        onClick={() => switchMode("forgot")}
+                        className="text-xs text-primary/80 hover:text-primary transition-colors font-medium"
+                      >
+                        Esqueci minha senha
+                      </button>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      required
+                      placeholder="••••••••"
+                      value={form.password}
+                      onChange={(e) => update("password", e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 text-white placeholder-slate-500 rounded-xl px-4 py-3 pr-11 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="absolute right-3 top-3.5 text-slate-400 hover:text-white transition-colors"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Account link option (register only) */}
+                {mode === "register" && (
+                  <div className="animate-in slide-in-from-top-2 duration-200 space-y-3">
+                    <label className="flex items-center gap-2 cursor-pointer group">
+                      <div
+                        className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all ${
+                          linkAccount ? "bg-primary border-primary" : "border-slate-500 group-hover:border-slate-300"
+                        }`}
+                        onClick={() => setLinkAccount((v) => !v)}
+                      >
+                        {linkAccount && (
+                          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </div>
+                      <span className="text-sm text-slate-300">Entrar em uma conta existente</span>
+                    </label>
+
+                    {linkAccount && (
+                      <div className="animate-in slide-in-from-top-1 duration-150">
+                        <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                          Código da Conta
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Cole o código da conta aqui"
+                          value={form.accountId}
+                          onChange={(e) => update("accountId", e.target.value)}
+                          className="w-full bg-white/5 border border-white/10 text-white placeholder-slate-500 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all font-mono"
+                        />
+                        <p className="text-xs text-slate-500 mt-1">
+                          O código está disponível em Configurações → Conta
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Error */}
+                {error && (
+                  <div className="bg-red-500/10 border border-red-500/30 text-red-300 text-sm rounded-xl px-4 py-3 animate-in fade-in duration-200">
+                    {error}
+                  </div>
+                )}
+
+                {/* Submit */}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl py-3.5 text-sm transition-all duration-200 shadow-lg shadow-primary/30 disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.98] flex items-center justify-center gap-2 mt-2"
+                >
+                  {loading ? (
+                    <>
+                      <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      Aguarde...
+                    </>
+                  ) : mode === "login" ? (
+                    <>
+                      <LogIn className="w-4 h-4" />
+                      Entrar
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="w-4 h-4" />
+                      Criar Conta
+                    </>
+                  )}
+                </button>
+              </form>
+            </>
+          )}
         </div>
 
-        <p className="text-center text-slate-600 dark:text-slate-300 text-xs mt-6">
+        <p className="text-center text-slate-600 text-xs mt-6">
           Seus dados são privados e protegidos com criptografia.
         </p>
       </div>

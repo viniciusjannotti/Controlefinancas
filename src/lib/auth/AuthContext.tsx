@@ -11,6 +11,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut as firebaseSignOut,
+  sendPasswordResetEmail,
   onAuthStateChanged,
   User,
 } from "firebase/auth";
@@ -50,6 +51,7 @@ interface AuthContextValue {
     existingAccountId?: string
   ) => Promise<void>;
   signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -194,9 +196,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLegacyProfile(false);
   }, []);
 
+  // ── Recuperação de senha ────────────────────────────────────────────────────
+  const resetPassword = useCallback(async (email: string) => {
+    await sendPasswordResetEmail(auth, email);
+  }, []);
+
   return (
     <AuthContext.Provider
-      value={{ user, accountId, userName, loading, accountLoading, memberLabels, isLegacyProfile, signIn, signUp, signOut }}
+      value={{ user, accountId, userName, loading, accountLoading, memberLabels, isLegacyProfile, signIn, signUp, signOut, resetPassword }}
     >
       {children}
     </AuthContext.Provider>

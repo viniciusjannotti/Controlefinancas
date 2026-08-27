@@ -1,44 +1,28 @@
-export async function fetchStockPrices(tickers: string[]) {
+/**
+ * Busca cotações via API Route interna do Next.js (/api/quotes).
+ * Isso evita problemas de CORS e mantém o token seguro no servidor.
+ */
+export async function fetchStockPrices(tickers: string[]): Promise<Record<string, number>> {
   if (tickers.length === 0) return {};
 
-  // Remove duplicatas para economizar requisições
-  const uniqueTickers = Array.from(new Set(tickers.map(t => t.toUpperCase().trim())));
-  const prices: Record<string, number> = {};
-  const token = process.env.NEXT_PUBLIC_BRAPI_TOKEN || '';
+  // Remove duplicatas e normaliza (remove .SA duplicado antes de enviar)
+  const uniqueTickers = Array.from(
+    new Set(tickers.map((t) => t.toUpperCase().trim().replace(/\.SA$/i, "")))
+  );
 
-  try {
-    // Buscamos um por um para evitar o limite de "X ativos por requisição" do plano gratuito
-    for (const ticker of uniqueTickers) {
-      const symbol = ticker.includes('.') ? ticker : `${ticker}.SA`;
-      const url = token
-        ? `https://brapi.dev/api/quote/${symbol}?token=${token}`
-        : `https://brapi.dev/api/quote/${symbol}`;
-      
-      const response = await fetch(url);
+  const response = await fetch(
+    `/api/quotes?tickers=${encodeURIComponent(uniqueTickers.join(","))}`
+  );
 
-      if (response.status === 401) {
-        throw new Error('BRAPI_AUTH_REQUIRED');
-      }
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`API_ERROR_${response.status}_${errorText.substring(0, 50)}`);
-      }
-
-      const data = await response.json();
-
-      if (data.results && data.results[0]) {
-        const result = data.results[0];
-        const price = result.regularMarketPrice;
-        if (price) {
-          prices[ticker] = price;
-          prices[`${ticker}.SA`] = price;
-        }
-      }
-    }
-
-    return prices;
-  } catch (error: any) {
-    throw error;
+  if (response.status === 401) {
+    throw new Error("BRAPI_AUTH_REQUIRED");
   }
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`API_ERROR_${response.status}_${text.substring(0, 100)}`);
+  }
+
+  const data = await response.json();
+  return data.prices ?? {};
 }
