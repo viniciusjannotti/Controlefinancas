@@ -5,9 +5,8 @@ import {
   Plus, 
   Search, 
   Filter, 
-  MoreVertical, 
+  MoreVertical,
   Wallet,
-  Calendar as CalendarIcon,
   Tag,
   Users,
   CreditCard,
@@ -15,7 +14,12 @@ import {
   ArrowRight,
   ChevronLeft,
   ChevronRight,
-  X
+  ChevronDown,
+  X,
+  Trash2,
+  Edit3,
+  History,
+  DollarSign
 } from "lucide-react";
 import { format, addMonths, subMonths, isSameMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -100,6 +104,53 @@ const getCategoryColor = (cat: string) => {
   const parent = cat.split(" > ")[0];
   return categoryColors[parent] || "#CBD5E1";
 };
+
+// ──────────────────────────────────────
+// Groups entries that share the same "local" (descrição, ou categoria quando
+// não há descrição) into a single consolidated row with total + histórico.
+// ──────────────────────────────────────
+// Normaliza date (string "YYYY-MM-DD" ou Timestamp do Firestore) para uma chave comparável
+function dateSortKey(raw: any): string {
+  if (!raw) return "";
+  if (typeof raw === "string") return raw;
+  if (raw.seconds) return new Date(raw.seconds * 1000).toISOString();
+  return "";
+}
+
+function consolidateExpenses(expenses: any[]) {
+  const groups: Record<string, any> = {};
+
+  for (const e of expenses) {
+    const key = (e.description || "").trim() || e.category || "Outros";
+    if (!groups[key]) {
+      groups[key] = {
+        key,
+        description: (e.description || "").trim() || (e.category || "Outros").split(" > ").pop(),
+        entries: [],
+        total: 0,
+      };
+    }
+    groups[key].entries.push(e);
+    groups[key].total += Number(e.amount) || 0;
+  }
+
+  return Object.values(groups)
+    .map((g: any) => {
+      const sortedEntries = g.entries.slice().sort((a: any, b: any) => dateSortKey(b.date).localeCompare(dateSortKey(a.date)));
+      const categories = new Set(sortedEntries.map((e: any) => e.category));
+      const methods = new Set(sortedEntries.map((e: any) => e.method));
+      const payers = new Set(sortedEntries.map((e: any) => e.userId));
+      return {
+        ...g,
+        entries: sortedEntries,
+        latestDate: dateSortKey(sortedEntries[0]?.date),
+        category: categories.size === 1 ? sortedEntries[0].category : null,
+        method: methods.size === 1 ? sortedEntries[0].method : null,
+        userId: payers.size === 1 ? sortedEntries[0].userId : null,
+      };
+    })
+    .sort((a: any, b: any) => (b.latestDate || "").localeCompare(a.latestDate || ""));
+}
 
 const mockExpenses = [
   { id: 1, date: "2024-03-01", description: "Aluguel", category: "Moradia", paidBy: "Vinícius", amount: 2500, method: "Boleto" },
@@ -274,6 +325,7 @@ export default function ExpensesPage() {
           <div id="form-card">
             <AddExpenseForm
               memberLabels={memberLabels}
+              allExpenses={expenses}
               onSave={() => {
                 fetchExpenses();
                 setEditingExpense(null);
@@ -312,8 +364,17 @@ function ExpensesTable({
   onFilterChange: (val: any) => void,
   paymentMethods: string[]
 }) {
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState<any | null>(null);
+
+  const consolidated = React.useMemo(() => consolidateExpenses(data), [data]);
+
+  // Keep the open detail panel in sync when the underlying data changes (edit/delete)
+  React.useEffect(() => {
+    if (!selectedGroup) return;
+    const updated = consolidated.find((g: any) => g.key === selectedGroup.key);
+    setSelectedGroup(updated || null);
+  }, [consolidated]);
 
   // Get available subcategories for the selected category filter
   const availableSubcategories = React.useMemo(() => {
@@ -333,6 +394,7 @@ function ExpensesTable({
   }
 
   return (
+    <>
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
@@ -506,67 +568,63 @@ function ExpensesTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.length === 0 ? (
+            {consolidated.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center py-8 text-slate-400 dark:text-slate-500">
                   Nenhum gasto encontrado.
                 </TableCell>
               </TableRow>
             ) : (
-              data.map((expense) => (
-                <TableRow key={expense.id}>
+              consolidated.map((group: any) => (
+                <TableRow
+                  key={group.key}
+                  className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                  onClick={() => setSelectedGroup(group)}
+                >
                   <TableCell className="font-medium whitespace-nowrap">
-                    {(() => {
-                      const d = expense.date?.seconds 
-                        ? new Date(expense.date.seconds * 1000) 
-                        : (typeof expense.date === 'string' 
-                            ? new Date(expense.date + 'T00:00:00') // Force local midnight
-                            : new Date(expense.date));
-                      return formatDate(d);
-                    })()}
+                    {group.entries.length > 1 ? (
+                      <span className="text-slate-500 dark:text-slate-400 text-xs">{group.entries.length} lançamentos</span>
+                    ) : (
+                      (() => {
+                        const raw = group.entries[0].date;
+                        const d = raw?.seconds
+                          ? new Date(raw.seconds * 1000)
+                          : (typeof raw === 'string'
+                              ? new Date(raw + 'T00:00:00') // Force local midnight
+                              : new Date(raw));
+                        return formatDate(d);
+                      })()
+                    )}
                   </TableCell>
-                  <TableCell className="font-semibold">{expense.description || expense.category.split(" > ").pop()}</TableCell>
-                  <TableCell>
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: `${getCategoryColor(expense.category || "")}15`, color: getCategoryColor(expense.category || "") }}>
-                      {expense.category}
-                    </span>
+                  <TableCell className="font-semibold flex items-center gap-1.5">
+                    {group.description}
+                    {group.entries.length > 1 && <ChevronDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />}
                   </TableCell>
-                  <TableCell className="text-slate-500 dark:text-slate-400">{expense.method || "-"}</TableCell>
                   <TableCell>
-                    {expense.userId === "maria" ? memberLabels.maria : expense.userId === "vinicius" ? memberLabels.vinicius : expense.userId}
+                    {group.category ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: `${getCategoryColor(group.category)}15`, color: getCategoryColor(group.category) }}>
+                        {group.category}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-slate-400 dark:text-slate-500">Várias</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-slate-500 dark:text-slate-400">{group.method || (group.entries.length > 1 ? "Vários" : "-")}</TableCell>
+                  <TableCell>
+                    {group.userId === "maria" ? memberLabels.maria : group.userId === "vinicius" ? memberLabels.vinicius : (group.userId || "Vários")}
                   </TableCell>
                   <TableCell className="text-right font-bold text-red-600">
-                    {formatCurrency(expense.amount)}
+                    {formatCurrency(group.total)}
                   </TableCell>
-                  <TableCell className="relative">
-                    <Button 
-                      variant="ghost" 
-                      className="h-8 w-8 p-0"
-                      onClick={() => setOpenMenuId(openMenuId === expense.id ? null : expense.id)}
-                    >
-                      <MoreVertical className="w-4 h-4" />
-                    </Button>
-                    
-                    {openMenuId === expense.id && (
-                      <div className="absolute right-full top-0 mr-2 z-50 w-32 bg-white dark:bg-slate-900 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1 overflow-hidden animate-in fade-in zoom-in duration-200">
-                        <button 
-                          className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 flex items-center gap-2"
-                          onClick={() => {
-                            onEdit(expense);
-                            setOpenMenuId(null);
-                          }}
-                        >
-                          Editar
-                        </button>
-                        <button 
-                          className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
-                          onClick={() => {
-                            onDelete(expense.id);
-                            setOpenMenuId(null);
-                          }}
-                        >
-                          Excluir
-                        </button>
+                  <TableCell className="relative" onClick={(e) => e.stopPropagation()}>
+                    {group.entries.length === 1 && (
+                      <div className="flex items-center gap-1 justify-end">
+                        <Button variant="ghost" className="h-8 w-8 p-0" onClick={() => onEdit(group.entries[0])}>
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button variant="ghost" className="h-8 w-8 p-0 text-red-500 hover:bg-red-50" onClick={() => onDelete(group.entries[0].id)}>
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
                       </div>
                     )}
                   </TableCell>
@@ -577,32 +635,124 @@ function ExpensesTable({
         </Table>
       </CardContent>
     </Card>
+
+    {selectedGroup && (
+      <ExpenseGroupDetailPanel
+        group={selectedGroup}
+        memberLabels={memberLabels}
+        onClose={() => setSelectedGroup(null)}
+        onEdit={(expense: any) => { onEdit(expense); setSelectedGroup(null); }}
+        onDelete={(id: string) => onDelete(id)}
+      />
+    )}
+    </>
   );
 }
 
+// ──────────────────────────────────────
+// Expense Group Detail Panel — histórico de lançamentos de um mesmo "local"
+// ──────────────────────────────────────
+function ExpenseGroupDetailPanel({ group, memberLabels, onClose, onEdit, onDelete }: any) {
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+      <div className="relative w-full max-w-lg h-full bg-white dark:bg-slate-900 shadow-2xl overflow-y-auto animate-in slide-in-from-right duration-300" onClick={(e) => e.stopPropagation()}>
+        <div className="sticky top-0 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 px-6 py-4 flex items-center justify-between z-10">
+          <div>
+            <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">{group.description}</h3>
+            <p className="text-sm text-slate-400 dark:text-slate-500">
+              {group.entries.length} lançamento{group.entries.length > 1 ? "s" : ""} · Total {formatCurrency(group.total)}
+            </p>
+          </div>
+          <Button variant="ghost" className="h-8 w-8 p-0" onClick={onClose}><X className="w-4 h-4" /></Button>
+        </div>
+
+        <div className="p-6 space-y-3">
+          <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300 font-semibold mb-2">
+            <History className="w-4 h-4" /> Histórico de Lançamentos
+          </div>
+          {group.entries.map((entry: any) => {
+            const raw = entry.date;
+            const d = raw?.seconds
+              ? new Date(raw.seconds * 1000)
+              : (typeof raw === 'string' ? new Date(raw + 'T00:00:00') : new Date(raw));
+            return (
+              <div key={entry.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-xl group/item">
+                <div>
+                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{formatDate(d)}</p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    {entry.method || "-"} · {entry.userId === "maria" ? memberLabels.maria : entry.userId === "vinicius" ? memberLabels.vinicius : entry.userId}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-bold text-red-600">{formatCurrency(entry.amount)}</span>
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" className="h-7 w-7 p-0" onClick={() => onEdit(entry)}><Edit3 className="w-3 h-3" /></Button>
+                    <Button variant="ghost" className="h-7 w-7 p-0 text-red-500 hover:bg-red-50" onClick={() => onDelete(entry.id)}><Trash2 className="w-3 h-3" /></Button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type ExpenseRow = { date: string; amount: string; method: string };
+
+const emptyRow = (method = "Cartão"): ExpenseRow => ({
+  date: new Date().toISOString().split('T')[0],
+  amount: "",
+  method,
+});
+
 function AddExpenseForm({
   memberLabels,
+  allExpenses,
   onSave,
   editingExpense,
   onCancel
 }: {
   memberLabels: { maria: string; vinicius: string },
+  allExpenses: any[],
   onSave: () => void,
   editingExpense?: any | null,
   onCancel?: () => void
 }) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    date: new Date().toISOString().split('T')[0],
     description: "",
     category: "PA > Aluguel",
     userId: "maria",
-    amount: "",
-    method: "Cartão"
   });
+  const [rows, setRows] = useState<ExpenseRow[]>([emptyRow()]);
   const [installments, setInstallments] = useState(1);
   const { onFinancialAction } = useGame();
   const { accountId } = useAuth();
+
+  // Sugestões de "locais" já usados (descrições recorrentes), para autocompletar
+  const descriptionSuggestions = React.useMemo(() => {
+    const map = new Map<string, any>();
+    for (const e of allExpenses) {
+      const key = (e.description || "").trim();
+      if (!key) continue;
+      const existing = map.get(key);
+      if (!existing || dateSortKey(e.date) >= dateSortKey(existing.date)) map.set(key, e);
+    }
+    return Array.from(map.values());
+  }, [allExpenses]);
+
+  const handleDescriptionBlur = () => {
+    if (editingExpense) return;
+    const match = descriptionSuggestions.find(
+      e => (e.description || "").trim().toLowerCase() === formData.description.trim().toLowerCase()
+    );
+    if (match) {
+      setFormData(prev => ({ ...prev, category: match.category || prev.category, userId: match.userId || prev.userId }));
+    }
+  };
 
   React.useEffect(() => {
     if (editingExpense) {
@@ -614,89 +764,93 @@ function AddExpenseForm({
       }
 
       setFormData({
-        date: dateStr,
         description: editingExpense.description || "",
         category: editingExpense.category || "PA > Aluguel",
         userId: editingExpense.userId || "maria",
-        amount: editingExpense.amount?.toString() || "",
-        method: editingExpense.method || "Cartão"
       });
+      setRows([{ date: dateStr, amount: editingExpense.amount?.toString() || "", method: editingExpense.method || "Cartão" }]);
     } else {
       setFormData({
-        date: new Date().toISOString().split('T')[0],
         description: "",
         category: "PA > Aluguel",
         userId: "maria",
-        amount: "",
-        method: "Cartão"
       });
+      setRows([emptyRow()]);
       setInstallments(1);
     }
   }, [editingExpense]);
 
+  const addRow = () => {
+    setRows(prev => [...prev, emptyRow(prev[prev.length - 1]?.method)]);
+    setInstallments(1);
+  };
+  const removeRow = (index: number) => setRows(prev => prev.filter((_, i) => i !== index));
+  const updateRow = (index: number, patch: Partial<ExpenseRow>) =>
+    setRows(prev => prev.map((r, i) => (i === index ? { ...r, ...patch } : r)));
+
   const handleSubmit = async () => {
-    if (!formData.amount) {
-      alert("Por favor, preencha o valor.");
+    const validRows = rows.filter(r => r.amount && Number(r.amount) > 0);
+    if (validRows.length === 0) {
+      alert("Por favor, preencha ao menos um valor.");
       return;
     }
+    if (!accountId) return;
 
     setLoading(true);
     try {
       if (editingExpense) {
-        const data = {
-          date: formData.date,
+        const r = rows[0];
+        await updateExpense(editingExpense.id, {
+          date: r.date,
           description: formData.description,
           category: formData.category,
-          amount: Number(formData.amount),
-          method: formData.method
-        };
-        await updateExpense(editingExpense.id, {
-          ...data,
+          amount: Number(r.amount),
+          method: r.method,
           userId: formData.userId // Allow changing user on edit too
         });
       } else {
-        if (formData.method === "Cartão" && installments > 1) {
-          const totalAmount = Number(formData.amount);
+        if (validRows.length === 1 && validRows[0].method === "Cartão" && installments > 1) {
+          const totalAmount = Number(validRows[0].amount);
           const dividedAmount = totalAmount / installments;
-          
-          const [year, month, day] = formData.date.split("-").map(Number);
-          
+
+          const [year, month, day] = validRows[0].date.split("-").map(Number);
+
           for (let i = 0; i < installments; i++) {
             const nextDate = addMonths(new Date(year, month - 1, day), i);
             const yyyy = nextDate.getFullYear();
             const mm = String(nextDate.getMonth() + 1).padStart(2, '0');
             const dd = String(nextDate.getDate()).padStart(2, '0');
-            
+
             const data = {
               date: `${yyyy}-${mm}-${dd}`,
               description: `${formData.description || formData.category.split(" > ").pop()} (Parcela ${i + 1}/${installments})`,
               category: formData.category,
               amount: dividedAmount,
-              method: formData.method
+              method: validRows[0].method
             };
-            await addExpense(formData.userId, accountId!, data);
+            await addExpense(formData.userId, accountId, data);
           }
         } else {
-          const data = {
-            date: formData.date,
-            description: formData.description,
-            category: formData.category,
-            amount: Number(formData.amount),
-            method: formData.method
-          };
-          await addExpense(formData.userId, accountId!, data);
+          for (const r of validRows) {
+            await addExpense(formData.userId, accountId, {
+              date: r.date,
+              description: formData.description,
+              category: formData.category,
+              amount: Number(r.amount),
+              method: r.method
+            });
+          }
         }
         onFinancialAction("expense_created");
       }
 
-      setFormData({
-        date: new Date().toISOString().split('T')[0],
-        description: "",
-        category: "PA > Aluguel",
-        userId: "maria",
-        amount: "",
-        method: "Cartão"
-      });
+      if (editingExpense) {
+        // O reset completo ocorre via o efeito acima quando o pai limpa editingExpense
+      } else {
+        // Mantém descrição/categoria/pago por — permite continuar lançando para o mesmo local
+        setRows([emptyRow(rows[rows.length - 1]?.method)]);
+        setInstallments(1);
+      }
       onSave();
     } catch (error) {
       console.error("Erro ao salvar despesa:", error);
@@ -705,6 +859,8 @@ function AddExpenseForm({
       setLoading(false);
     }
   };
+
+  const selectClass = "flex h-11 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all";
 
   return (
     <Card>
@@ -716,27 +872,21 @@ function AddExpenseForm({
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="date">Data</Label>
-          <div className="relative">
-            <CalendarIcon className="absolute left-3 top-3 h-4 w-4 text-slate-400 dark:text-slate-500" />
-            <Input 
-              id="date" 
-              type="date" 
-              className="pl-10" 
-              value={formData.date}
-              onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-            />
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="desc">Descrição <span className="text-slate-400 dark:text-slate-500 font-normal">(Opcional)</span></Label>
-          <Input 
-            id="desc" 
-            placeholder="Ex: Supermercado Mensal" 
+          <Label htmlFor="desc">Descrição / Local <span className="text-slate-400 dark:text-slate-500 font-normal">(Opcional)</span></Label>
+          <Input
+            id="desc"
+            list="expense-descriptions"
+            placeholder="Ex: Mercado, Uber, 99..."
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            onBlur={handleDescriptionBlur}
           />
+          <datalist id="expense-descriptions">
+            {descriptionSuggestions.map(e => <option key={e.description} value={e.description} />)}
+          </datalist>
+          <p className="text-[11px] text-slate-400 dark:text-slate-500">
+            Use o mesmo nome de um local recorrente (ex: "Mercado") para agrupar os lançamentos na tabela.
+          </p>
         </div>
 
         <div className="space-y-2">
@@ -749,8 +899,8 @@ function AddExpenseForm({
 
         <div className="space-y-2">
           <Label htmlFor="paidBy">Pago por</Label>
-          <select 
-            id="paidBy" 
+          <select
+            id="paidBy"
             className="flex h-11 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all"
             value={formData.userId}
             onChange={(e) => setFormData({ ...formData, userId: e.target.value })}
@@ -760,34 +910,69 @@ function AddExpenseForm({
           </select>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="amount">Valor</Label>
-            <Input 
-              id="amount" 
-              type="number" 
-              placeholder="0,00" 
-              value={formData.amount}
-              onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="method">Pagamento</Label>
-            <select 
-              id="method" 
-              className="flex h-11 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all"
-              value={formData.method}
-              onChange={(e) => setFormData({ ...formData, method: e.target.value })}
-            >
-              <option value="Cartão">Cartão</option>
-              <option value="Pix">Pix</option>
-              <option value="Boleto">Boleto</option>
-              <option value="Dinheiro">Dinheiro</option>
-            </select>
-          </div>
+        <div className="space-y-2">
+          {rows.map((row, i) => (
+            <div key={i} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-end">
+              <div className="space-y-1">
+                {i === 0 && <Label htmlFor={`amount-${i}`}>Valor</Label>}
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-3 h-4 w-4 text-slate-400 dark:text-slate-500" />
+                  <Input
+                    id={`amount-${i}`}
+                    type="number"
+                    placeholder="0,00"
+                    className="pl-9"
+                    value={row.amount}
+                    onChange={(e) => updateRow(i, { amount: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                {i === 0 && <Label htmlFor={`date-${i}`}>Data</Label>}
+                <Input
+                  id={`date-${i}`}
+                  type="date"
+                  value={row.date}
+                  onChange={(e) => updateRow(i, { date: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1">
+                {i === 0 && <Label htmlFor={`method-${i}`}>Pagamento</Label>}
+                <select
+                  id={`method-${i}`}
+                  className={selectClass}
+                  value={row.method}
+                  onChange={(e) => updateRow(i, { method: e.target.value })}
+                >
+                  <option value="Cartão">Cartão</option>
+                  <option value="Pix">Pix</option>
+                  <option value="Boleto">Boleto</option>
+                  <option value="Dinheiro">Dinheiro</option>
+                  <option value="Transferência">Transferência</option>
+                </select>
+              </div>
+              <div className="flex gap-1">
+                {i === rows.length - 1 && !editingExpense && (
+                  <Button type="button" variant="outline" size="icon" className="h-11 w-11 shrink-0" onClick={addRow} title="Adicionar outro lançamento">
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                )}
+                {rows.length > 1 && (
+                  <Button type="button" variant="ghost" size="icon" className="h-11 w-11 shrink-0 text-red-500 hover:bg-red-50" onClick={() => removeRow(i)} title="Remover">
+                    <X className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
+          {rows.length > 1 && (
+            <p className="text-xs text-slate-500 dark:text-slate-400 pt-1">
+              Total: {formatCurrency(rows.reduce((acc, r) => acc + (Number(r.amount) || 0), 0))} em {rows.length} lançamentos
+            </p>
+          )}
         </div>
 
-        {formData.method === "Cartão" && !editingExpense && (
+        {rows.length === 1 && rows[0].method === "Cartão" && !editingExpense && (
           <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
             <Label htmlFor="installments">Parcelamento (Sem Juros)</Label>
             <select
@@ -797,8 +982,8 @@ function AddExpenseForm({
               onChange={(e) => setInstallments(Number(e.target.value))}
             >
               {[...Array(12)].map((_, i) => {
-                const isValido = Number(formData.amount) > 0;
-                const vlParcela = isValido ? formatCurrency(Number(formData.amount) / (i + 1)) : "";
+                const isValido = Number(rows[0].amount) > 0;
+                const vlParcela = isValido ? formatCurrency(Number(rows[0].amount) / (i + 1)) : "";
                 return (
                   <option key={i + 1} value={i + 1}>
                     {i + 1}x {i + 1 > 1 && isValido ? `de ${vlParcela}` : ''}
@@ -811,17 +996,17 @@ function AddExpenseForm({
 
         <div className="flex gap-2">
           {editingExpense && (
-            <Button 
+            <Button
               variant="outline"
-              className="flex-1 mt-4" 
+              className="flex-1 mt-4"
               onClick={onCancel}
               disabled={loading}
             >
               Cancelar
             </Button>
           )}
-          <Button 
-            className="flex-1 mt-4" 
+          <Button
+            className="flex-1 mt-4"
             onClick={handleSubmit}
             disabled={loading}
           >
