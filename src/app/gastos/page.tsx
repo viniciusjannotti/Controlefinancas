@@ -305,8 +305,8 @@ export default function ExpensesPage() {
         <StatsCard title={`Pago por ${memberLabels.vinicius}`} value={paidByVinicius} color="blue" />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-6">
+      <div className="grid gap-6 lg:grid-cols-5">
+        <div className="lg:col-span-3 space-y-6">
           <ExpensesTable
             data={filteredExpenses}
             memberLabels={memberLabels}
@@ -321,7 +321,7 @@ export default function ExpensesPage() {
           />
         </div>
 
-        <div className="space-y-6">
+        <div className="lg:col-span-2 space-y-6">
           <div id="form-card">
             <AddExpenseForm
               memberLabels={memberLabels}
@@ -910,10 +910,10 @@ function AddExpenseForm({
           </select>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-3">
           {rows.map((row, i) => (
-            <div key={i} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-end">
-              <div className="space-y-1">
+            <div key={i} className="flex gap-2 items-end">
+              <div className="flex-[1.3] min-w-0 space-y-1">
                 {i === 0 && <Label htmlFor={`amount-${i}`}>Valor</Label>}
                 <div className="relative">
                   <DollarSign className="absolute left-3 top-3 h-4 w-4 text-slate-400 dark:text-slate-500" />
@@ -927,7 +927,7 @@ function AddExpenseForm({
                   />
                 </div>
               </div>
-              <div className="space-y-1">
+              <div className="w-[140px] shrink-0 space-y-1">
                 {i === 0 && <Label htmlFor={`date-${i}`}>Data</Label>}
                 <Input
                   id={`date-${i}`}
@@ -936,7 +936,7 @@ function AddExpenseForm({
                   onChange={(e) => updateRow(i, { date: e.target.value })}
                 />
               </div>
-              <div className="space-y-1">
+              <div className="flex-1 min-w-0 space-y-1">
                 {i === 0 && <Label htmlFor={`method-${i}`}>Pagamento</Label>}
                 <select
                   id={`method-${i}`}
@@ -951,20 +951,21 @@ function AddExpenseForm({
                   <option value="Transferência">Transferência</option>
                 </select>
               </div>
-              <div className="flex gap-1">
-                {i === rows.length - 1 && !editingExpense && (
-                  <Button type="button" variant="outline" size="icon" className="h-11 w-11 shrink-0" onClick={addRow} title="Adicionar outro lançamento">
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                )}
-                {rows.length > 1 && (
-                  <Button type="button" variant="ghost" size="icon" className="h-11 w-11 shrink-0 text-red-500 hover:bg-red-50" onClick={() => removeRow(i)} title="Remover">
-                    <X className="w-4 h-4" />
-                  </Button>
-                )}
-              </div>
+              {rows.length > 1 && (
+                <Button type="button" variant="ghost" size="icon" className="h-11 w-11 shrink-0 text-red-500 hover:bg-red-50" onClick={() => removeRow(i)} title="Remover">
+                  <X className="w-4 h-4" />
+                </Button>
+              )}
             </div>
           ))}
+
+          {!editingExpense && (
+            <Button type="button" variant="outline" className="w-full" onClick={addRow}>
+              <Plus className="w-4 h-4 mr-2" />
+              Adicionar outro lançamento
+            </Button>
+          )}
+
           {rows.length > 1 && (
             <p className="text-xs text-slate-500 dark:text-slate-400 pt-1">
               Total: {formatCurrency(rows.reduce((acc, r) => acc + (Number(r.amount) || 0), 0))} em {rows.length} lançamentos
