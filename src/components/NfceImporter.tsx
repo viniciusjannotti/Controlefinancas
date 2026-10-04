@@ -10,16 +10,40 @@ export interface NfceImport {
   establishment: string | null;
 }
 
+const LONG_SIDES = [1600, 1000, 600];
+const THRESHOLDS: (number | null)[] = [null, 128, 170, 200];
+
+function binarize(data: Uint8ClampedArray, threshold: number | null): Uint8ClampedArray {
+  const out = new Uint8ClampedArray(data.length);
+  for (let i = 0; i < data.length; i += 4) {
+    const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+    const v = threshold === null ? gray : gray > threshold ? 255 : 0;
+    out[i] = out[i + 1] = out[i + 2] = v;
+    out[i + 3] = 255;
+  }
+  return out;
+}
+
 async function decodeQrFromImage(file: File): Promise<string | null> {
   const bitmap = await createImageBitmap(file);
-  const canvas = document.createElement("canvas");
-  canvas.width = bitmap.width;
-  canvas.height = bitmap.height;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return null;
-  ctx.drawImage(bitmap, 0, 0);
-  const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  return jsQR(data, width, height)?.data ?? null;
+  const longest = Math.max(bitmap.width, bitmap.height);
+  for (const target of LONG_SIDES) {
+    const scale = target / longest;
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return null;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    const raw = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    for (const threshold of THRESHOLDS) {
+      const data = binarize(raw.data, threshold);
+      const found = jsQR(data, raw.width, raw.height, { inversionAttempts: "attemptBoth" });
+      if (found?.data) return found.data;
+    }
+  }
+  return null;
 }
 
 export function NfceImporter({ onImport }: { onImport: (nota: NfceImport) => void }) {

@@ -226,3 +226,19 @@ export const deleteDividend = async (id: string) => {
   const docRef = doc(db, "dividends", id);
   await deleteDoc(docRef);
 };
+
+// ─── Compras (itens de nota, para comparar preços entre locais) ───────────────
+export const addPurchase = async (userId: string, accountId: string, data: any) => {
+  return await addDoc(collection(db, "purchases"), {
+    ...data,
+    userId,
+    accountId,
+    createdAt: Timestamp.now(),
+  });
+};
+
+export const getPurchases = async (accountId: string) => {
+  const q = query(collection(db, "purchases"), where("accountId", "==", accountId));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+};

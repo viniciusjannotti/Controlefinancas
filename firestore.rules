@@ -57,6 +57,11 @@ service cloud.firestore {
       allow create: if isMember(request.resource.data.accountId);
     }
 
+    match /purchases/{docId} {
+      allow read, update, delete: if isMember(resource.data.accountId);
+      allow create: if isMember(request.resource.data.accountId);
+    }
+
     match /reminders/{docId} {
       allow read, update, delete: if isMember(resource.data.accountId);
       allow create: if isMember(request.resource.data.accountId);

@@ -44,7 +44,10 @@ import {
 } from "@/components/ui/Card";
 import { Button, Input, Label, Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/index";
 import { formatCurrency, formatDate, cn } from "@/lib/utils";
-import { addExpense, getExpenses, updateExpense, deleteExpense } from "@/lib/firebase/db";
+import { addExpense, addPurchase, getExpenses, updateExpense, deleteExpense } from "@/lib/firebase/db";
+import { PastedItemsImporter } from "@/components/PastedItemsImporter";
+import { PriceComparison } from "@/components/PriceComparison";
+import { PurchaseItem } from "@/lib/nfce/parseItems";
 // import { toast } from "sonner";
 import { useGame } from "@/lib/game/GameContext";
 import { useAuth } from "@/lib/auth/AuthContext";
@@ -338,6 +341,8 @@ export default function ExpensesPage() {
           <DistributionCard pieData={pieData} />
         </div>
       </div>
+
+      <PriceComparison />
     </div>
   );
 }
@@ -730,6 +735,7 @@ function AddExpenseForm({
   });
   const [rows, setRows] = useState<ExpenseRow[]>([emptyRow()]);
   const [installments, setInstallments] = useState(1);
+  const [purchaseItems, setPurchaseItems] = useState<PurchaseItem[]>([]);
   const { onFinancialAction } = useGame();
   const { accountId } = useAuth();
 
@@ -843,6 +849,17 @@ function AddExpenseForm({
           }
         }
         onFinancialAction("expense_created");
+        if (purchaseItems.length > 0) {
+          const total = Math.round(purchaseItems.reduce((acc, i) => acc + i.amount, 0) * 100) / 100;
+          await addPurchase(formData.userId, accountId, {
+            placeName: formData.description || "Sem local",
+            date: rows[0].date,
+            method: rows[0].method,
+            total,
+            items: purchaseItems,
+          });
+          setPurchaseItems([]);
+        }
       }
 
       if (editingExpense) {
@@ -918,6 +935,19 @@ function AddExpenseForm({
               setRows(prev => (prev.length === 1 && !prev[0].amount ? [newRow] : [...prev, newRow]));
               if (nota.establishment) {
                 setFormData(prev => (prev.description ? prev : { ...prev, description: nota.establishment! }));
+              }
+            }}
+          />
+        )}
+
+        {!editingExpense && (
+          <PastedItemsImporter
+            items={purchaseItems}
+            onChange={(items) => {
+              setPurchaseItems(items);
+              if (items.length > 0) {
+                const total = Math.round(items.reduce((acc, i) => acc + (Number(i.amount) || 0), 0) * 100) / 100;
+                setRows(prev => [{ ...prev[0], amount: String(total) }]);
               }
             }}
           />
