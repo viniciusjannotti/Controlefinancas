@@ -51,7 +51,6 @@ import { PurchaseItem } from "@/lib/nfce/parseItems";
 // import { toast } from "sonner";
 import { useGame } from "@/lib/game/GameContext";
 import { useAuth } from "@/lib/auth/AuthContext";
-import { NfceImporter } from "@/components/NfceImporter";
 
 // Hierarchical categories matching the household budget structure
 const categoryTree: { label: string; sub?: string[] }[] = [
@@ -927,18 +926,6 @@ function AddExpenseForm({
             <option value="vinicius">{memberLabels.vinicius}</option>
           </select>
         </div>
-
-        {!editingExpense && (
-          <NfceImporter
-            onImport={(nota) => {
-              const newRow = { date: nota.date || emptyRow().date, amount: String(nota.total), method: "Cartão" };
-              setRows(prev => (prev.length === 1 && !prev[0].amount ? [newRow] : [...prev, newRow]));
-              if (nota.establishment) {
-                setFormData(prev => (prev.description ? prev : { ...prev, description: nota.establishment! }));
-              }
-            }}
-          />
-        )}
 
         {!editingExpense && (
           <PastedItemsImporter
